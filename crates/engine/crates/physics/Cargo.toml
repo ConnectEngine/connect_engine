@@ -1,0 +1,10 @@
+[package]
+name = "physics"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bevy_ecs = { workspace = true }
+
+rapier3d = { version = "0.32.0", features = ["simd-stable"] }

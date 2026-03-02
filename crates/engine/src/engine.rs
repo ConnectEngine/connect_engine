@@ -19,7 +19,9 @@ use crate::{
     engine::{
         ecs::{
             buffers_pool::BuffersPool,
-            general::{check_audio_state, propogate_disabled_to_new_children, update_time},
+            general::{
+                check_audio_state, physics_tick, propogate_disabled_to_new_children, update_time,
+            },
             samplers_pool::SamplersPool,
             setup::{
                 prepare_default_samplers::prepare_default_samplers_system,
@@ -105,6 +107,7 @@ impl Engine {
         scheduler_renderer_update.add_systems(
             (
                 check_audio_state::check_audio_state_system,
+                physics_tick::physics_tick_system,
                 prepare_frame::prepare_frame_system,
                 collect_instance_objects::collect_instance_objects_system,
                 update_resources::update_resources_system,
@@ -125,6 +128,7 @@ impl Engine {
         world.insert_resource(Time::new());
         world.insert_resource(Input::new());
         world.insert_resource(Random::new());
+        world.insert_resource(physics::Physics::new());
 
         world.run_schedule(SchedulerRendererSetup);
         world.flush();
