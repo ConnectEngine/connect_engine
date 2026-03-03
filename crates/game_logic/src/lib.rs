@@ -39,7 +39,6 @@ impl GamePlugin for Game {
             fire_from_gun,
             spawn_asteroids,
             create_rigidbody_for_planet,
-            print_planet_rigid_body_info,
             rotate_asteroids,
             rotate_player,
             jump_player,
@@ -297,19 +296,6 @@ fn create_rigidbody_for_planet(
             }
         }
     }
-}
-
-fn print_planet_rigid_body_info(
-    _planet_rigid_body_query: Query<&RigidBody, With<PlanetTag>>,
-    _physics: Physics,
-) {
-    /*     if let Ok(planet_rigid_body) = planet_rigid_body_query.single() {
-        println!(
-            "Planet Rigidbody World Position: {}",
-            planet_rigid_body.get_world_position(&physics)
-        );
-    }
-    */
 }
 
 fn rotate_asteroids(
