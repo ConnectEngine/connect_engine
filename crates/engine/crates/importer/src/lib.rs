@@ -1,5 +1,5 @@
-use std::{collections::HashMap, path::PathBuf};
-use uuid::{Uuid, Version};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use uuid::{Uuid, Version, uuid};
 
 use asset_importer::{Matrix4x4, node::Node, postprocess::PostProcessSteps, raw};
 use bevy_ecs::{resource::Resource, system::ResMut};
@@ -265,6 +265,8 @@ pub struct Importer {
 }
 
 impl Importer {
+    const ENGINE_ASSET_NAMESPACE: Uuid = uuid!("7bd2b6c7-4494-4337-a884-6dd216017354");
+
     pub fn new() -> Self {
         let serialized_assets_folder_path_buffer = Self::get_serialized_assets_folder_path_buffer();
 
@@ -435,14 +437,27 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                 let model_name = model_entry.entry.name.clone();
                 let serialized_model = serialize_model_asset(&mut importer, &model_entry);
 
-                let uuid = Uuid::new_v4();
+                let relative_path = model_entry
+                    .entry
+                    .path_buf
+                    .strip_prefix(&importer.asset_folder_path_buffer)
+                    .unwrap_or(&model_entry.entry.path_buf)
+                    .to_string_lossy();
+
+                let normalized_asset_path = relative_path.replace("\\", "/");
+
+                let uuid = Uuid::new_v5(
+                    &Importer::ENGINE_ASSET_NAMESPACE,
+                    normalized_asset_path.as_bytes(),
+                );
+
                 let serialized_model_path_buffer = importer
                     .serialized_assets_path_buffers
                     .model_path
                     .join(std::format!("{}_{}", model_name, uuid))
                     .clone();
                 let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&serialized_model)
-                    .expect("Failed to serialize model");
+                    .expect("Failed to serialize model.");
 
                 std::fs::write(serialized_model_path_buffer, bytes).unwrap();
 

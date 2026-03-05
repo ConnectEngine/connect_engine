@@ -26,8 +26,15 @@ asset-importer = { version = "0.7.0", default-features = false, features = [
 walkdir = "2.5"
 serde = { version = "1.0.228", features = ["derive"] }
 ron = "0.12.0"
+toml = "1.0.4+spec-1.1.0"
 rkyv = "0.8.15"
-uuid = { version = "1.21.0", features = ["fast-rng", "v4", "serde"] }
+uuid = { version = "1.21.0", features = [
+    "fast-rng",
+    "v4",
+    "serde",
+    "v5",
+    "macro-diagnostics",
+] }
 uuid-simd = { version = "0.8", default-features = false, features = ["std"] }
 meshopt = "0.6.2"
 image = { version = "0.25.9", default-features = false, features = [
