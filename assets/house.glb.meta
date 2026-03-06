@@ -1,4 +1,4 @@
 [Model]
 uuid = "4c56d3cb-3a15-5748-b0fc-427b198ea318"
 name = "house.glb"
-path_buf = 'E:\Projects\vulkan_renderer\assets\house.glb'
+path_buf = 'C:\Users\User\Documents\GitHub\vulkan_renderer\assets\house.glb'

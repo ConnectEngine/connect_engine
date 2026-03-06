@@ -380,16 +380,6 @@ pub fn resolve_assets_entries_system(mut importer: ResMut<Importer>) {
 
 pub fn check_if_asset_is_serialized_system(mut importer: ResMut<Importer>) {
     let meta_files = importer.meta_files.to_vec();
-    meta_files.iter().for_each(|meta_file| match meta_file {
-        AssetMetadata::Model(model_asset_metadata) => {
-            println!(
-                "{} {}",
-                model_asset_metadata.name,
-                model_asset_metadata.path_buf.display()
-            );
-        }
-        AssetMetadata::Texture(texture_asset_metadata) => todo!(),
-    });
 
     importer.assets_entries.retain(|asset_entry| {
         let name = match asset_entry {

@@ -1,4 +1,4 @@
 [Model]
 uuid = "5221b2aa-c857-5739-b77a-65560b9a6228"
 name = "basicmesh.glb"
-path_buf = 'E:\Projects\vulkan_renderer\assets\basicmesh.glb'
+path_buf = 'C:\Users\User\Documents\GitHub\vulkan_renderer\assets\basicmesh.glb'
