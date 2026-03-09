@@ -536,7 +536,7 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                         let serialized_texture_asset_metadata =
                             toml::ser::to_string_pretty(&texture_asset_metadata).unwrap();
 
-                        let texture_asset_metadata_path = model_entry.entry.path_buf.clone();
+                        let texture_asset_metadata_path = texture_entry.entry.path_buf.clone();
 
                         std::fs::write(
                             std::format!("{}.meta", texture_asset_metadata_path.display()),
