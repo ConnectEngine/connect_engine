@@ -5,7 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     default,
     io::{Cursor, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use uuid::{Uuid, uuid};
 
@@ -151,6 +151,23 @@ pub struct MaterialData {
     pub sampler_index: u32,
 }
 
+#[repr(C)]
+#[padding_struct]
+#[derive(Default, Clone, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct TextureInput {
+    pub uuid: String,
+    pub offset: u32,
+}
+
+#[repr(C)]
+#[padding_struct]
+#[derive(Default, Clone, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct SerializedMaterial {
+    pub size: u32,
+    pub data: Vec<u8>,
+    pub texture_inputs: Vec<TextureInput>,
+}
+
 pub struct Material {
     //pub ptr_data: DeviceAddress,
     pub state: MaterialState,
@@ -218,7 +235,8 @@ pub struct ModelAssetMetadata {
     uuid: Uuid,
     name: String,
     path_buf: PathBuf,
-    // TODO: Temp commenting.
+    //materials: Vec<Uuid>,
+    // TODO: Temp comment1ing.
     //textures: Vec<Uuid>,
 }
 
@@ -229,16 +247,19 @@ pub struct TextureAssetMetadata {
     path_buf: PathBuf,
 }
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct MaterialAssetMetadata {
     uuid: Uuid,
-    name: Option<String>,
-    path_buf: Option<PathBuf>,
+    name: String,
+    path_buf: PathBuf,
+    textures: Vec<Uuid>,
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum AssetMetadata {
     Model(ModelAssetMetadata),
     Texture(TextureAssetMetadata),
+    Material(MaterialAssetMetadata),
 }
 
 #[derive(Clone)]
@@ -469,12 +490,14 @@ pub fn check_if_asset_is_serialized_system(mut importer: ResMut<Importer>) {
                 AssetMetadata::Texture(texture_asset_metadata) => {
                     texture_asset_metadata.name.as_str()
                 }
+                AssetMetadata::Material(material_asset_metadata) => todo!(),
             };
             let meta_path = match meta_file {
                 AssetMetadata::Model(model_asset) => model_asset.path_buf.as_path(),
                 AssetMetadata::Texture(texture_asset_metadata) => {
                     texture_asset_metadata.path_buf.as_path()
                 }
+                AssetMetadata::Material(material_asset_metadata) => todo!(),
             };
 
             name.eq(meta_name) && path.eq(meta_path)
@@ -678,6 +701,7 @@ fn serialize_model_asset(
     let mut serialized_meshes = HashMap::with_capacity(scene.num_meshes());
     // TODO: Temp.
     let mut extracted_textures = HashSet::with_capacity(scene.textures().count());
+    //let mut extracted_materials = HashSet::with_capacity(scene.textures().count());
     let mut associated_texture_entries: Vec<TextureEntry> =
         Vec::with_capacity(scene.textures().count());
     //let mut serialized_textures = HashMap::with_capacity(serialized_meshes.capacity());
@@ -772,9 +796,9 @@ fn serialize_model_asset(
                     mesh_index = serialized_model.meshes.len();
 
                     let material_index = mesh.material_index();
-                    let material = scene.material(material_index).unwrap();
 
-                    let asset_entry = extract_texture(
+                    let material = scene.material(material_index).unwrap();
+                    let texture_base_asset_entry = extract_texture_from_material(
                         &scene,
                         &model_name,
                         PathBuf::from(model_path),
@@ -782,13 +806,51 @@ fn serialize_model_asset(
                         material.clone(),
                     );
 
+                    // MATERIAL //////////////////////////////////////////
+                    let is_material_transparent = is_material_transparent(&material);
+                    let mut material_type = MaterialType::Opaque;
+                    if is_material_transparent {
+                        material_type = MaterialType::Transparent;
+                    }
+
+                    let base_color_raw = material.base_color().unwrap();
+                    let base_color = Vec4::new(
+                        base_color_raw.x,
+                        base_color_raw.y,
+                        base_color_raw.z,
+                        base_color_raw.w,
+                    );
+
+                    let metallic_value = material.metallic_factor().unwrap_or(0.0);
+                    let roughness_value = material.roughness_factor().unwrap_or(0.0);
+                    let albedo_texture_index = u32::default();
+                    let metallic_texture_index = u32::default();
+                    let roughness_texture_index = u32::default();
+
+                    let material_data = MaterialData {
+                        material_properties: MaterialProperties::new(
+                            base_color,
+                            metallic_value,
+                            roughness_value,
+                        ),
+                        material_textures: MaterialTextures::new(
+                            albedo_texture_index,
+                            metallic_texture_index,
+                            roughness_texture_index,
+                        ),
+                        sampler_index: Default::default(),
+                    };
+                    let material_data_raw = bytemuck::bytes_of(&material_data);
+
+                    /////////////////////////////////////////////////////////////
+
                     let mut texture_format = TextureFormat::Bc1;
                     // TODO: In future, texture format isn't dependent by material type. Type and texture format are independent (Material Type != Texture Format).
-                    if is_material_transparent(material) {
+                    if is_material_transparent {
                         texture_format = TextureFormat::Bc3;
                     }
 
-                    if let Some(asset_entry) = asset_entry {
+                    if let Some(asset_entry) = texture_base_asset_entry {
                         let texture_entry = TextureEntry {
                             entry: asset_entry.clone(),
                             format: texture_format,
@@ -827,10 +889,8 @@ fn serialize_model_asset(
     }
 }
 
-fn extract_textures_from_model() {}
-
 // TODO: Handle, when texture is not part of model's binary.
-fn extract_texture(
+fn extract_texture_from_material(
     scene: &asset_importer::Scene,
     model_name: &str,
     mut model_path: PathBuf,
@@ -880,6 +940,59 @@ fn extract_texture(
     }
 
     base_asset_entry
+}
+
+fn serialize_material(
+    importer: &mut Importer,
+    model_path: &Path,
+    material_data: &[u8],
+    model_name: &str,
+    material_name: &str,
+) {
+    let relative_path = model_path
+        .strip_prefix(&importer.asset_folder_path_buffer)
+        .unwrap_or(&model_path)
+        .to_string_lossy();
+
+    let normalized_asset_path = relative_path.replace("\\", "/");
+
+    let uuid_name = std::format!("{}{}", normalized_asset_path, material_name);
+    let uuid = Uuid::new_v5(&Importer::ENGINE_ASSET_NAMESPACE, uuid_name.as_bytes());
+    let uuid_str = uuid.as_simple().to_string();
+
+    let serialized_asset_path = importer
+        .serialized_assets_path_buffers
+        .materials_path
+        .join(&uuid_str[0..2]);
+    std::fs::create_dir_all(serialized_asset_path.as_path()).unwrap();
+
+    let serialized_material_path_buffer = serialized_asset_path
+        .join(std::format!("{}_{}.mat", model_name, material_name))
+        .clone();
+
+    std::fs::write(
+        serialized_material_path_buffer.as_path(),
+        serialized_material_asset,
+    )
+    .unwrap();
+
+    let texture_asset_metadata = AssetMetadata::Texture(TextureAssetMetadata {
+        uuid,
+        name: texture_entry.entry.name.clone(),
+        path_buf: PathBuf::from(normalized_asset_path),
+        // TODO: Temp commenting.
+        // textures,
+    });
+    let serialized_texture_asset_metadata =
+        toml::ser::to_string_pretty(&texture_asset_metadata).unwrap();
+
+    let texture_asset_metadata_path = texture_entry.entry.path_buf.clone();
+
+    std::fs::write(
+        std::format!("{}.meta", texture_asset_metadata_path.display()),
+        serialized_texture_asset_metadata,
+    )
+    .unwrap();
 }
 
 fn serialize_texture_asset(
@@ -1000,7 +1113,7 @@ fn serialize_texture_asset(
     ktx_texture
 }
 
-fn is_material_transparent(material: asset_importer::Material) -> bool {
+fn is_material_transparent(material: &asset_importer::Material) -> bool {
     let alpha_mode = std::str::from_utf8(
         material
             .get_property_raw_ref(c"$mat.gltf.alphaMode", None, 0)
