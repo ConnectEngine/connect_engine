@@ -155,15 +155,15 @@ pub struct MaterialData {
 #[padding_struct]
 #[derive(Default, Clone, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct TextureInput {
-    pub uuid: String,
-    pub offset: u32,
+    pub uuid: Uuid,
+    pub offset: usize,
 }
 
 #[repr(C)]
 #[padding_struct]
 #[derive(Default, Clone, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedMaterial {
-    pub size: u32,
+    pub size: usize,
     pub data: Vec<u8>,
     pub texture_inputs: Vec<TextureInput>,
 }
@@ -570,7 +570,7 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                 )
                 .unwrap();
             }
-            AssetEntry::Texture(model_entry) => {}
+            AssetEntry::Texture(texture_entry) => {}
         });
 }
 
@@ -927,11 +927,6 @@ fn serialize_material(
     let uuid = Uuid::new_v5(&Importer::ENGINE_ASSET_NAMESPACE, uuid_name.as_bytes());
     let uuid_str = uuid.as_simple().to_string();
 
-    let serialized_asset_path = importer
-        .serialized_assets_path_buffers
-        .materials_path
-        .join(&uuid_str[0..2]);
-
     model_path.pop();
     let target_path = model_path
         .join(std::format!("{}_media", model_name))
@@ -942,7 +937,31 @@ fn serialize_material(
         .join(std::format!("{}_{}.mat", model_name, material_name))
         .clone();
 
-    std::fs::write(serialized_material_path_buffer.as_path(), material_data).unwrap();
+    let texture_inputs = associated_textures_assets_metadata
+        .iter()
+        .enumerate()
+        .map(|(index, associated_texture_asset_metadata)| TextureInput {
+            uuid: associated_texture_asset_metadata.uuid,
+            offset: std::mem::offset_of!(MaterialData, material_textures)
+                + std::mem::offset_of!(MaterialTextures, albedo_texture_index),
+            ..Default::default()
+        })
+        .collect();
+
+    let serialized_material = SerializedMaterial {
+        size: material_data.len(),
+        data: material_data.to_vec(),
+        texture_inputs,
+        ..Default::default()
+    };
+    let serialized_material_raw =
+        rkyv::to_bytes::<rkyv::rancor::Error>(&serialized_material).unwrap();
+
+    std::fs::write(
+        serialized_material_path_buffer.as_path(),
+        serialized_material_raw,
+    )
+    .unwrap();
 
     let textures = associated_textures_assets_metadata
         .drain(..)
