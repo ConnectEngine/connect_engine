@@ -75,6 +75,7 @@ impl Loader {
                     self.models_to_load.push(AssetToLoad {
                         uuid: model_asset_metadata.uuid,
                         name: model_asset_metadata.name.clone(),
+                        path: ,
                     });
                 }
                 AssetMetadata::Texture(texture_asset_metadata) => {
@@ -93,6 +94,10 @@ impl Loader {
     }
 
     pub fn load_assets(&mut self, asset_database: &mut AssetDatabase) {}
+
+    pub fn resolve_path(uuid: Uuid, asset_type: AssetType) {
+
+    }
 }
 
 pub fn load_assets_system(
