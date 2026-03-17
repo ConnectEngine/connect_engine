@@ -1,5 +1,5 @@
 use std::{
-    io::Read,
+    io::{BufReader, Read},
     path::{Path, PathBuf},
 };
 
@@ -9,7 +9,7 @@ use bevy_ecs::{
     system::{Res, ResMut},
 };
 use information::Information;
-use shared::{ArtifactsFoldersNames, AssetMetadata, AssetsExtensions};
+use shared::{ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
@@ -28,7 +28,7 @@ struct AssetToLoad {
 
 #[derive(Default, Resource)]
 pub struct Loader {
-    pub collected_meta_files: Vec<AssetMetadata>,
+    pub(crate) collected_meta_files: Vec<AssetMetadata>,
     pub(crate) models_to_load: Vec<AssetToLoad>,
     pub(crate) textures_to_load: Vec<AssetToLoad>,
     pub(crate) materials_to_load: Vec<AssetToLoad>,
@@ -114,7 +114,33 @@ impl Loader {
             });
     }
 
-    pub(crate) fn load_assets(&mut self, asset_database: &mut AssetDatabase) {}
+    pub(crate) fn load_assets(&mut self, asset_database: &mut AssetDatabase) {
+        self.models_to_load.drain(..).for_each(|model_to_load| {
+            let serialized_model_buf_reader =
+                BufReader::new(std::fs::File::open(model_to_load.path).unwrap());
+
+            let archived_serialized_model = rkyv::access::<
+                ArchivedSerializedModel,
+                rkyv::rancor::Error,
+            >(serialized_model_buf_reader.buffer())
+            .unwrap();
+
+            archived_serialized_model
+                .hierarchy
+                .serialized_nodes
+                .iter()
+                .for_each(|node| {
+                    if node.mesh_index.is_some() {
+                        let mesh_index = node.mesh_index.unwrap();
+
+                        let serialized_mesh = archived_serialized_model
+                            .meshes
+                            .get(mesh_index.to_native() as usize)
+                            .unwrap();
+                    }
+                });
+        });
+    }
 
     pub(crate) fn resolve_path(
         asset_type: AssetType,
