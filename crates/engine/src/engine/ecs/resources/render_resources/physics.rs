@@ -87,7 +87,6 @@ impl PhysicsManager {
         }
     }
 
-    #[inline(always)]
     pub fn step(&mut self) {
         let physics_hooks = ();
         let event_handler = ();

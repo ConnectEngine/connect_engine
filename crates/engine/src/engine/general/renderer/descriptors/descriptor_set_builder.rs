@@ -192,7 +192,6 @@ impl<'a> DescriptorSetBuilder<'a> {
         }
     }
 
-    #[inline(always)]
     fn get_descriptor_buffer_aligned_size(value: u64, alignment: u64) -> u64 {
         (value + alignment - 1) & !(alignment - 1)
     }

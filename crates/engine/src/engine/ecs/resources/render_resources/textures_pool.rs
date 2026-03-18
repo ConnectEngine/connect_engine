@@ -274,7 +274,6 @@ impl TexturesPool {
         )
     }
 
-    #[inline(always)]
     pub fn get_image(&self, texture_reference: TextureReference) -> Option<&AllocatedImage> {
         let allocated_image;
 

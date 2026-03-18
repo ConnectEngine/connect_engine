@@ -964,7 +964,6 @@ fn is_material_transparent(material: &asset_importer::Material) -> bool {
     alpha_mode.contains("BLEND")
 }
 
-#[inline(always)]
 fn get_mesh_indices(node: &Node, num_meshes: usize) -> Vec<usize> {
     let mut mesh_indices = Vec::with_capacity(num_meshes);
     if num_meshes > Default::default() {
@@ -976,7 +975,6 @@ fn get_mesh_indices(node: &Node, num_meshes: usize) -> Vec<usize> {
     mesh_indices
 }
 
-#[inline(always)]
 fn generate_meshlets(
     indices: &[u32],
     vertices: &VertexDataAdapter,

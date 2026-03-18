@@ -36,7 +36,6 @@ impl MapppedAllocationHandler {
         }
     }
 
-    #[inline(always)]
     pub fn get_ptr(&self) -> *mut u8 {
         self.ptr
     }
@@ -96,7 +95,6 @@ impl BufferReference {
         buffers_pool.get_buffer(*self)
     }
 
-    #[inline(always)]
     pub fn get_buffer_info(&self) -> BufferInfo {
         self.buffer_info
     }
@@ -244,7 +242,6 @@ impl BuffersPool {
         self.insert_buffer(allocated_buffer)
     }
 
-    #[inline(always)]
     fn insert_buffer(&mut self, allocated_buffer: AllocatedBuffer) -> BufferReference {
         let buffer_info = allocated_buffer.buffer_info;
         let buffer_key = self.slots.insert(allocated_buffer);
@@ -255,7 +252,6 @@ impl BuffersPool {
         }
     }
 
-    #[inline(always)]
     pub fn get_buffer(&self, buffer_reference: BufferReference) -> Option<&AllocatedBuffer> {
         self.slots.get(buffer_reference.key)
     }
@@ -451,7 +447,6 @@ impl BuffersPool {
             .unwrap();
     }
 
-    #[inline(always)]
     pub fn map_allocation(&self, buffer_reference: BufferReference) -> MapppedAllocationHandler {
         let allocated_buffer = self.get_buffer(buffer_reference).unwrap();
 

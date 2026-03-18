@@ -184,7 +184,6 @@ impl Engine {
         self.world.run_schedule(SchedulerGameInit);
     }
 
-    #[inline(always)]
     pub fn update(&mut self) {
         self.world.run_schedule(SchedulerWorldUpdate);
         self.world.run_schedule(SchedulerGameUpdate);
@@ -196,7 +195,6 @@ impl Engine {
         input.reset();
     }
 
-    #[inline(always)]
     pub fn process_input(&mut self, key_code: KeyCode, state: ElementState) {
         let mut input = unsafe { self.world.get_resource_mut::<Input>().unwrap_unchecked() };
         if state == ElementState::Pressed {
@@ -206,7 +204,6 @@ impl Engine {
         }
     }
 
-    #[inline(always)]
     pub fn process_mouse(&mut self, mouse_delta: (f32, f32)) {
         let mut input = unsafe { self.world.get_resource_mut::<Input>().unwrap_unchecked() };
         input.set_mouse_delta(mouse_delta);

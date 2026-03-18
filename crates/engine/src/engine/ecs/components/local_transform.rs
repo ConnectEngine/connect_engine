@@ -85,7 +85,6 @@ impl LocalTransform {
         self.local_rotation = Quat::from_mat4(&rotation_matrix);
     }
 
-    #[inline(always)]
     pub fn local_to_world_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             self.local_scale,
@@ -105,7 +104,6 @@ impl Default for LocalTransform {
 pub struct GlobalTransform(pub Mat4);
 
 impl Default for GlobalTransform {
-    #[inline(always)]
     fn default() -> Self {
         Self(Mat4::from_scale_rotation_translation(
             Vec3::ONE,

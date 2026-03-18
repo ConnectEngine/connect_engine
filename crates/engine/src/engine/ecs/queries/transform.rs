@@ -11,17 +11,14 @@ pub struct Transform {
 }
 
 impl<'w, 's> TransformItem<'w, 's> {
-    #[inline(always)]
     pub fn scale(&self) -> Vec3 {
         self.global.0.to_scale_rotation_translation().0
     }
 
-    #[inline(always)]
     pub fn rotation(&self) -> Quat {
         self.global.0.to_scale_rotation_translation().1
     }
 
-    #[inline(always)]
     pub fn position(&self) -> Vec3 {
         self.global.0.to_scale_rotation_translation().2
     }
@@ -89,7 +86,6 @@ impl<'w, 's> TransformItem<'w, 's> {
         self.local.local_rotation = Quat::from_mat4(&rotation_matrix);
     }
 
-    #[inline(always)]
     pub fn local_to_world_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             self.local.local_scale,
@@ -100,17 +96,14 @@ impl<'w, 's> TransformItem<'w, 's> {
 }
 
 impl<'w, 's> TransformReadOnlyItem<'w, 's> {
-    #[inline(always)]
     pub fn scale(&self) -> Vec3 {
         self.global.0.to_scale_rotation_translation().0
     }
 
-    #[inline(always)]
     pub fn rotation(&self) -> Quat {
         self.global.0.to_scale_rotation_translation().1
     }
 
-    #[inline(always)]
     pub fn position(&self) -> Vec3 {
         self.global.0.to_scale_rotation_translation().2
     }
@@ -146,7 +139,6 @@ impl<'w, 's> TransformReadOnlyItem<'w, 's> {
         self.local.local_rotation * Vec3::Y
     }
 
-    #[inline(always)]
     pub fn local_to_world_matrix(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(
             self.local.local_scale,

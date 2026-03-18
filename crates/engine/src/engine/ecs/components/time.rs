@@ -23,12 +23,10 @@ impl Time {
         }
     }
 
-    #[inline(always)]
     pub fn get_delta_time(&self) -> f32 {
         self.delta_time
     }
 
-    #[inline(always)]
     pub fn update(&mut self) {
         let now = std::time::Instant::now();
         let duration = now.duration_since(self.last_frame);

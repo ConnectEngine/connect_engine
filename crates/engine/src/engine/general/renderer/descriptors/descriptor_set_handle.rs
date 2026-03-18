@@ -164,12 +164,10 @@ impl DescriptorSetHandle {
         };
     }
 
-    #[inline(always)]
     pub fn get_pipeline_layout(&self) -> PipelineLayout {
         unsafe { self.pipeline_layout.unwrap_unchecked() }
     }
 
-    #[inline(always)]
     pub fn get_descriptor_set_layout(&self) -> DescriptorSetLayout {
         unsafe {
             self.descriptor_set_layout_handle
@@ -178,7 +176,6 @@ impl DescriptorSetHandle {
         }
     }
 
-    #[inline(always)]
     pub fn get_buffer_info(&self) -> BufferInfo {
         self.descriptor_buffer_reference.get_buffer_info()
     }

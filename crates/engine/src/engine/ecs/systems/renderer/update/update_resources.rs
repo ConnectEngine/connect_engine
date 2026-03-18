@@ -87,7 +87,6 @@ pub fn update_resources_system(
     }
 }
 
-#[inline(always)]
 fn update_buffer_data<T: Pod>(buffer_to_update: &SwappableBuffer<T>, buffers: &BuffersPool) {
     let data_to_write = buffer_to_update.get_objects_to_write_as_slice();
 

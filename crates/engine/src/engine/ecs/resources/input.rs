@@ -42,7 +42,6 @@ impl Input {
         self.mouse_axis
     }
 
-    #[inline(always)]
     pub(crate) fn press(&mut self, key: KeyCode) {
         if !self.pressed.contains(&key) {
             self.just_pressed.insert(key);
@@ -50,13 +49,11 @@ impl Input {
         self.pressed.insert(key);
     }
 
-    #[inline(always)]
     pub(crate) fn release(&mut self, key: KeyCode) {
         self.pressed.remove(&key);
         self.just_released.insert(key);
     }
 
-    #[inline(always)]
     pub(crate) fn set_mouse_delta(&mut self, mouse_delta: (f32, f32)) {
         self.mouse_delta = Vec2::new(mouse_delta.0, mouse_delta.1);
 
@@ -64,7 +61,6 @@ impl Input {
         self.mouse_axis += mouse_delta;
     }
 
-    #[inline(always)]
     pub(crate) fn reset(&mut self) {
         self.just_pressed.clear();
         self.just_released.clear();
