@@ -22,6 +22,8 @@ ktx2-rw = { workspace = true }
 fast_image_resize = { workspace = true }
 meshopt = { workspace = true }
 padding-struct = { workspace = true }
+renderer = { workspace = true }
+vulkanite = { workspace = true }
 
 uuid = { workspace = true }
 uuid-simd = { workspace = true }

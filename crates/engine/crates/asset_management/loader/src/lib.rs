@@ -11,7 +11,10 @@ use bevy_ecs::{
 use information::Information;
 use shared::{ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions};
 use uuid::Uuid;
+use vulkanite::vk::BufferUsageFlags;
 use walkdir::WalkDir;
+
+use renderer::resources::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AssetType {
@@ -169,6 +172,27 @@ impl Loader {
         path_buf.push(std::format!("{name}_{uuid}"));
 
         path_buf
+    }
+
+    fn create_and_copy_to_buffer(
+        buffers_pool: &mut BuffersPool,
+        src: *const std::ffi::c_void,
+        size: usize,
+        name: String,
+    ) -> BufferReference {
+        let buffer_reference = buffers_pool.create_buffer(
+            size,
+            BufferUsageFlags::TransferDst,
+            BufferVisibility::DeviceOnly,
+            None,
+            Some(name),
+        );
+
+        unsafe {
+            buffers_pool.transfer_data_to_buffer_raw(buffer_reference, src, size);
+        }
+
+        buffer_reference
     }
 }
 

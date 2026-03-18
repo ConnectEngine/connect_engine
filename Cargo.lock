@@ -2269,12 +2269,14 @@ dependencies = [
  "meshopt",
  "num_cpus",
  "padding-struct",
+ "renderer",
  "rkyv",
  "serde",
  "shared",
  "toml",
  "uuid",
  "uuid-simd",
+ "vulkanite",
  "walkdir",
 ]
 
