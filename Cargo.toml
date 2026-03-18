@@ -10,6 +10,7 @@ members = [
     "crates/engine/crates/asset_management/asset_database",
     "crates/engine/crates/asset_management/shared",
     "crates/engine/crates/information",
+    "crates/engine/crates/renderer",
     # "crates/engine/crates/physics",
 ]
 
@@ -52,7 +53,22 @@ fast_image_resize = { version = "6.0.0", features = ["rayon", "image"] }
 padding-struct = "0.2.0"
 bytemuck = "1.25.0"
 num_cpus = "1.17.0"
+vulkanite = { git = "https://github.com/Jerrody/vulkanite", features = [
+    "version_1_4",
+    "loaded",
+    "ext_unified_image_layouts",
+    "ext_descriptor_buffer",
+    "raw-window-handle",
+    "ext_swapchain",
+    "ext_shader_object",
+    "ext_debug_utils",
+    "ext_mesh_shader",
+    "ext_validation_features",
+] }
+vma = { package = "vk-mem", git = "https://github.com/Jerrody/vulkanite-mem-rs", branch = "vulkanite" }
 slotmap = { git = "https://github.com/Jerrody/slotmap" }
+ahash = "0.8.12"
+nameof = "1.3.0"
 
 engine = { path = "crates/engine" }
 game_logic = { path = "crates/game_logic" }
@@ -62,6 +78,7 @@ loader = { path = "crates/engine/crates/asset_management/loader" }
 shared = { path = "crates/engine/crates/asset_management/shared" }
 asset_database = { path = "crates/engine/crates/asset_management/asset_database" }
 information = { path = "crates/engine/crates/information" }
+renderer = { path = "crates/engine/crates/renderer" }
 # physics = { path = "crates/engine/crates/physics" }
 
 [profile.dev]

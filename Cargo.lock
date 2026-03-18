@@ -3382,6 +3382,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "renderer"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "asset-importer",
+ "asset_database",
+ "bevy_ecs",
+ "bytemuck",
+ "fast_image_resize",
+ "image",
+ "information",
+ "ktx2-rw",
+ "math",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "shared",
+ "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
+ "toml",
+ "vk-mem",
+ "vulkanite",
+ "walkdir",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
