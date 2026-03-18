@@ -1,3 +1,5 @@
+// TODO: MOVE TO THE PROPER FOLDER!
+
 use bevy_ecs::{component::Component, resource::Resource};
 use math::Vec3;
 use rapier3d::{
