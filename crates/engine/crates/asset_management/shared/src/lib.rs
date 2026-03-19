@@ -10,6 +10,7 @@ use uuid::Uuid;
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedMesh {
     // NOTE: Vertices and Inddices baked by meshopt, can be issues with creating colliders, but need to check.
+    pub name: String,
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub meshlets: Vec<Meshlet>,

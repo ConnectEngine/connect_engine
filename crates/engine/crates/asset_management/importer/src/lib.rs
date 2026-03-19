@@ -542,6 +542,7 @@ fn serialize_model_asset(
                         generate_meshlets(&indices, &vertex_data_adapter);
 
                     let serialized_mesh = SerializedMesh {
+                        name: mesh.name(),
                         vertices,
                         indices: vertex_indices,
                         meshlets,

@@ -9,7 +9,10 @@ use bevy_ecs::{
     system::{Res, ResMut},
 };
 use information::Information;
-use shared::{ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions};
+use shared::{
+    ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions, Meshlet,
+    Vertex,
+};
 use uuid::Uuid;
 use vulkanite::vk::BufferUsageFlags;
 use walkdir::WalkDir;
@@ -117,7 +120,12 @@ impl Loader {
             });
     }
 
-    pub(crate) fn load_assets(&mut self, asset_database: &mut AssetDatabase) {
+    pub(crate) fn load_assets(
+        &mut self,
+        asset_database: &mut AssetDatabase,
+        buffers_pool: &mut BuffersPool,
+        mesh_buffers_pool: &mut MeshBuffersPool,
+    ) {
         self.models_to_load.drain(..).for_each(|model_to_load| {
             let serialized_model_buf_reader =
                 BufReader::new(std::fs::File::open(model_to_load.path).unwrap());
@@ -127,6 +135,9 @@ impl Loader {
                 rkyv::rancor::Error,
             >(serialized_model_buf_reader.buffer())
             .unwrap();
+
+            let mut mesh_buffers_to_load =
+                Vec::with_capacity(archived_serialized_model.meshes.len());
 
             archived_serialized_model
                 .hierarchy
@@ -140,6 +151,59 @@ impl Loader {
                             .meshes
                             .get(mesh_index.to_native() as usize)
                             .unwrap();
+
+                        let vertex_buffer_reference = Self::create_and_copy_to_buffer(
+                            buffers_pool,
+                            serialized_mesh.vertices.as_ptr() as *const _,
+                            serialized_mesh.vertices.len() * std::mem::size_of::<Vertex>(),
+                            std::format!("{}_{}", serialized_mesh.name, stringify!(vertices)),
+                        );
+                        let vertex_indices_buffer_reference = Self::create_and_copy_to_buffer(
+                            buffers_pool,
+                            serialized_mesh.indices.as_ptr() as _,
+                            serialized_mesh.indices.len() * std::mem::size_of::<u32>(),
+                            std::format!("{}_{}", serialized_mesh.name, stringify!(vertex_indices)),
+                        );
+                        let meshlets_buffer_reference = Self::create_and_copy_to_buffer(
+                            buffers_pool,
+                            serialized_mesh.meshlets.as_ptr() as _,
+                            serialized_mesh.meshlets.len() * std::mem::size_of::<Meshlet>(),
+                            std::format!("{}_{}", serialized_mesh.name, stringify!(meshlets)),
+                        );
+
+                        let local_indices_buffer_reference = Self::create_and_copy_to_buffer(
+                            buffers_pool,
+                            serialized_mesh.triangles.as_ptr() as _,
+                            serialized_mesh.triangles.len() * std::mem::size_of::<u8>(),
+                            std::format!("{}_{}", serialized_mesh.name, stringify!(triangles)),
+                        );
+
+                        let mesh_data = MeshData {
+                            vertices: rkyv::deserialize::<Vec<Vertex>, rkyv::rancor::Error>(
+                                &serialized_mesh.vertices,
+                            )
+                            .unwrap(),
+                            indices: rkyv::deserialize::<Vec<u32>, rkyv::rancor::Error>(
+                                &serialized_mesh.indices,
+                            )
+                            .unwrap(),
+                        };
+
+                        let mesh_buffer = MeshBuffer {
+                            mesh_object_device_address: Default::default(),
+                            vertex_buffer_reference,
+                            vertex_indices_buffer_reference,
+                            meshlets_buffer_reference,
+                            local_indices_buffer_reference,
+                            meshlets_count: serialized_mesh.meshlets.len(),
+                            mesh_data,
+                        };
+
+                        let mesh_buffer_reference =
+                            mesh_buffers_pool.insert_mesh_buffer(mesh_buffer);
+
+                        mesh_buffers_to_load
+                            .insert(mesh_index.to_native() as usize, mesh_buffer_reference);
                     }
                 });
         });
@@ -200,6 +264,8 @@ pub fn load_assets_system(
     information: Res<Information>,
     mut loader: ResMut<Loader>,
     mut asset_database: ResMut<AssetDatabase>,
+    mut buffers_pool: ResMut<BuffersPool>,
+    mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
     let editor_application = information.get_editor_application();
 
@@ -210,5 +276,9 @@ pub fn load_assets_system(
             .get_editor_application()
             .get_artifacts_folder_path(),
     );
-    loader.load_assets(&mut asset_database);
+    loader.load_assets(
+        &mut asset_database,
+        &mut buffers_pool,
+        &mut mesh_buffers_pool,
+    );
 }
