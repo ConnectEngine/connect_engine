@@ -136,7 +136,7 @@ impl Loader {
             >(serialized_model_buf_reader.buffer())
             .unwrap();
 
-            let mut mesh_buffers_to_load =
+            let mut mesh_buffers_to_upload =
                 Vec::with_capacity(archived_serialized_model.meshes.len());
 
             archived_serialized_model
@@ -202,7 +202,7 @@ impl Loader {
                         let mesh_buffer_reference =
                             mesh_buffers_pool.insert_mesh_buffer(mesh_buffer);
 
-                        mesh_buffers_to_load
+                        mesh_buffers_to_upload
                             .insert(mesh_index.to_native() as usize, mesh_buffer_reference);
                     }
                 });
