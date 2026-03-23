@@ -158,8 +158,8 @@ impl Engine {
         world.insert_resource(Random::new());
         world.insert_resource(physics::PhysicsManager::new());
 
-        world.run_schedule(SchedulerEngineStartup);
         world.run_schedule(SchedulerRendererSetup);
+        world.run_schedule(SchedulerEngineStartup);
         world.flush();
 
         // TODO: In future, we need to fix this. Awful code.
