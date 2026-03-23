@@ -179,7 +179,7 @@ fn spawn_planet(mut commands: Commands) {
 
     commands.trigger(LoadModelEvent {
         path: PathBuf::from(std::format!(
-            "{}/assets/planet.glb",
+            "{}/assets/models/planet.glb",
             exe_path.as_os_str().display()
         )),
         parent_entity: Some(planet_entity_id),
@@ -194,7 +194,7 @@ fn spawn_planet(mut commands: Commands) {
 
     commands.trigger(LoadModelEvent {
         path: PathBuf::from(std::format!(
-            "{}/assets/asteroid.glb",
+            "{}/assets/models/asteroid.glb",
             exe_path.as_os_str().display()
         )),
         parent_entity: Some(asteroid_entity_id),
