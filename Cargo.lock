@@ -1155,6 +1155,7 @@ dependencies = [
  "rapier3d",
  "raw-window-handle",
  "rayon",
+ "renderer",
  "shared",
  "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
  "vk-mem",
@@ -1434,6 +1435,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "engine",
+ "renderer",
  "winit",
 ]
 

@@ -1,8 +1,9 @@
 use crate::engine::{
-    ecs::{RendererResources, buffers_pool::BuffersPool, samplers_pool::SamplersPool},
+    ecs::RendererResources,
     general::renderer::{DescriptorKind, DescriptorSampler, DescriptorSetHandle},
 };
 use bevy_ecs::system::{Res, ResMut};
+use renderer::*;
 use vulkanite::vk::*;
 
 pub fn prepare_default_samplers_system(

@@ -442,6 +442,7 @@ fn serialize_model_asset(
 
         let serialized_node = SerializedNode {
             name: node_data.name.clone(),
+            index: node_data.index,
             parent_index: node_data.parent_index,
             matrix: local_matrix.to_cols_array(),
             mesh_index: None,
@@ -639,6 +640,7 @@ fn serialize_model_asset(
 
                 let serialized_node = SerializedNode {
                     name: mesh_name,
+                    index: node_data.index,
                     parent_index: Some(node_data.index),
                     matrix: node_data.matrix.to_cols_array(),
                     mesh_index: Some(mesh_index),

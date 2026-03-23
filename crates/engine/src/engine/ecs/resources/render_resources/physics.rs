@@ -11,7 +11,9 @@ use rapier3d::{
     },
 };
 
-use crate::engine::{LocalTransform, Physics, ecs::components::mesh::MeshData};
+use crate::engine::{LocalTransform, Physics};
+
+use renderer::*;
 
 #[derive(Component, Clone, Copy)]
 #[require(LocalTransform)]

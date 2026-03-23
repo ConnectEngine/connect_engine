@@ -14,11 +14,13 @@ use bevy_ecs::{
 use engine::{
     GamePlugin,
     engine::{
-        AudioReference, Camera, ClippingPlanes, Input, LoadModelEvent, LocalTransform, Mesh,
-        Physics, Time, Transform,
+        AudioReference, Camera, ClippingPlanes, Input, LoadModelEvent, LocalTransform, Physics,
+        Time, Transform,
     },
 };
 use engine::{engine::Audio, math::*};
+// FIXME
+use renderer::Mesh;
 use winit::keyboard::KeyCode;
 
 #[unsafe(no_mangle)]

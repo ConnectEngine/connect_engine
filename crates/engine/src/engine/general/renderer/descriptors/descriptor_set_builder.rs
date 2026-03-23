@@ -3,14 +3,12 @@ use std::collections::HashMap;
 use vma::*;
 use vulkanite::vk::{rs::*, *};
 
-use crate::engine::{
-    ecs::buffers_pool::BuffersPool,
-    general::renderer::{
-        BindingInfo, DescriptorSampledImage, DescriptorSampler, DescriptorSetHandle,
-        DescriptorSetLayoutHandle, DescriptorStorageImage, DescriptorsSizes,
-    },
-    resources::buffers_pool::BufferVisibility,
+use crate::engine::general::renderer::{
+    BindingInfo, DescriptorSampledImage, DescriptorSampler, DescriptorSetHandle,
+    DescriptorSetLayoutHandle, DescriptorStorageImage, DescriptorsSizes,
 };
+
+use renderer::*;
 
 pub enum DescriptorKind {
     StorageImage(DescriptorStorageImage),

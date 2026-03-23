@@ -34,6 +34,7 @@ pub struct SerializedHierarchy {
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedNode {
     pub name: String,
+    pub index: usize,
     pub parent_index: Option<usize>,
     pub matrix: [f32; 16],
     pub mesh_index: Option<usize>,

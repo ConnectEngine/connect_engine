@@ -7,6 +7,7 @@ mod utils;
 use asset_database::AssetDatabase;
 use ecs::*;
 
+use ::renderer::{BuffersPool, SamplersPool, TexturesPool};
 use bevy_ecs::{
     entity_disabling::Disabled,
     schedule::{IntoScheduleConfigs, ScheduleLabel, Schedules},
@@ -22,17 +23,14 @@ use crate::{
     GamePlugin,
     engine::{
         ecs::{
-            buffers_pool::BuffersPool,
             general::{
                 check_audio_state, physics_tick, propogate_disabled_to_new_children, update_time,
             },
-            samplers_pool::SamplersPool,
             setup::{
                 prepare_default_samplers::prepare_default_samplers_system,
                 prepare_default_textures::prepare_default_textures_system,
                 prepare_shaders::prepare_shaders_system,
             },
-            textures_pool::TexturesPool,
         },
         general::renderer::DescriptorSetHandle,
     },
@@ -41,7 +39,6 @@ use crate::{
 pub use audio::*;
 pub use components::camera::{Camera, ClippingPlanes};
 pub use components::local_transform::LocalTransform;
-pub use components::mesh::Mesh;
 pub use components::time::Time;
 pub use events::LoadModelEvent;
 pub use math;

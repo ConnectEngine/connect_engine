@@ -3,7 +3,7 @@ use shared::{LocalTransform, MeshBufferKey, Vertex};
 use slotmap::{Key, SlotMap};
 use vulkanite::vk::DeviceAddress;
 
-use crate::resources::{buffers_pool::BufferReference, materials_pool::MaterialReference};
+use crate::*;
 
 // TODO: MOVE TO SOME PLACE
 
@@ -16,8 +16,9 @@ pub struct MeshData {
 #[derive(Component, Clone, Copy)]
 #[require(LocalTransform)]
 pub struct Mesh {
-    pub(crate) mesh_buffer_reference: MeshBufferReference,
-    pub(crate) material_reference: MaterialReference,
+    // TODO: Make fields read-only later.
+    pub mesh_buffer_reference: MeshBufferReference,
+    pub material_reference: MaterialReference,
 }
 
 //////////////////////////////////////////////////
@@ -46,12 +47,14 @@ impl MeshBufferReference {
 #[derive(Resource)]
 pub struct MeshBuffersPool {
     slots: SlotMap<MeshBufferKey, MeshBuffer>,
+    mesh_objects_buffer_reference: BufferReference,
 }
 
 impl MeshBuffersPool {
-    pub fn new(pre_allocated_count: usize) -> Self {
+    pub fn new(mesh_objects_buffer_reference: BufferReference, pre_allocated_count: usize) -> Self {
         Self {
             slots: SlotMap::with_capacity_and_key(pre_allocated_count),
+            mesh_objects_buffer_reference,
         }
     }
 
@@ -61,6 +64,17 @@ impl MeshBuffersPool {
         MeshBufferReference {
             key: mesh_buffer_key,
         }
+    }
+
+    pub fn get_mesh_objects_buffer_reference(&self) -> BufferReference {
+        self.mesh_objects_buffer_reference
+    }
+
+    pub fn set_mesh_objects_buffer_reference(
+        &mut self,
+        new_mesh_objects_buffer_reference: BufferReference,
+    ) {
+        self.mesh_objects_buffer_reference = new_mesh_objects_buffer_reference;
     }
 
     pub fn get_mesh_buffer(

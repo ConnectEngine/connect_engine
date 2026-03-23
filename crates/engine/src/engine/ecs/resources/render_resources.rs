@@ -1,43 +1,18 @@
 pub mod audio;
-pub mod buffers_pool;
-pub mod materials_pool;
-pub mod mesh_buffers_pool;
 pub mod model_loader;
 pub mod physics;
-pub mod samplers_pool;
-pub mod textures_pool;
 
 use bevy_ecs::resource::Resource;
 use bytemuck::{NoUninit, Pod, Zeroable};
 use math::{Vec3, Vec4};
 use padding_struct::padding_struct;
-use slotmap::new_key_type;
 use vulkanite::vk::{rs::*, *};
 
-use crate::engine::resources::{
-    buffers_pool::BufferReference, render_resources::model_loader::ModelLoader,
-    samplers_pool::SamplerReference, textures_pool::TextureReference,
+use renderer::{
+    buffers_pool::BufferReference, samplers_pool::SamplerReference, textures_pool::TextureReference,
 };
 
-#[repr(C)]
-#[padding_struct]
-#[derive(Default, Clone, Copy, Pod, Zeroable)]
-pub struct Meshlet {
-    pub vertex_offset: u32,
-    pub triangle_offset: u32,
-    pub vertex_count: u32,
-    pub triangle_count: u32,
-}
-
-#[repr(C)]
-#[padding_struct]
-#[derive(Default, Clone, Copy, Pod, Zeroable)]
-pub struct Vertex {
-    pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub uv: [f32; 2],
-    pub color: [f32; 3],
-}
+use crate::engine::ecs::model_loader::ModelLoader;
 
 #[repr(C)]
 #[padding_struct]
@@ -169,6 +144,14 @@ impl ResourcesPool {
             scene_data_buffer: Default::default(),
         }
     }
+}
+
+pub struct GlobalResources {
+    pub default_texture_reference: TextureReference,
+    pub fallback_texture_reference: TextureReference,
+    pub default_sampler_reference: SamplerReference,
+    pub mesh_objects_buffer_reference: BufferReference,
+    pub materials_data_buffer_reference: BufferReference,
 }
 
 #[derive(Resource)]

@@ -7,6 +7,8 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [dependencies]
+# FIXME
+renderer = { workspace = true }
 engine = { workspace = true }
 bevy_ecs = { workspace = true }
 winit = { workspace = true }

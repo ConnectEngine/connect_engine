@@ -1,11 +1,9 @@
 use bevy_ecs::{hierarchy::ChildOf, name::Name, observer::On, system::Commands};
 use math::{Quat, Vec3};
+use renderer::Mesh;
 
 use crate::engine::{
-    components::{
-        local_transform::{GlobalTransform, LocalTransform},
-        mesh::Mesh,
-    },
+    components::local_transform::{GlobalTransform, LocalTransform},
     events::SpawnEvent,
 };
 

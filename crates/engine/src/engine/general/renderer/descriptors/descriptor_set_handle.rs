@@ -8,10 +8,9 @@ use vulkanite::{
     vk::{rs::*, *},
 };
 
-use crate::engine::{
-    ecs::buffers_pool::{BufferInfo, BufferReference, BuffersPool},
-    general::renderer::DescriptorKind,
-};
+use crate::engine::general::renderer::DescriptorKind;
+
+use renderer::*;
 
 #[derive(Default)]
 pub struct DescriptorSetLayoutHandle {

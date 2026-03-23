@@ -1,10 +1,11 @@
 use bevy_ecs::world::World;
+use renderer::CommandGroup;
 use vulkanite::vk::{rs::*, *};
 use winit::window::Window;
 
 use crate::engine::{
     Engine,
-    resources::{CommandGroup, FrameData, RendererContext, UploadContext, VulkanContextResource},
+    resources::{FrameData, RendererContext, UploadContext, VulkanContextResource},
 };
 
 impl Engine {

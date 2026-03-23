@@ -1,14 +1,12 @@
 use bevy_ecs::world::World;
+use renderer::*;
 use vulkanite::vk::{rs::Device, *};
 
 use crate::engine::{
     Engine,
-    ecs::{audio::Audio, mesh_buffers_pool::MeshBuffersPool},
+    ecs::audio::Audio,
     general::renderer::{DescriptorSetBuilder, DescriptorSetHandle},
-    resources::{
-        buffers_pool::BuffersPool, model_loader::ModelLoader, samplers_pool::SamplersPool,
-        textures_pool::TexturesPool, *,
-    },
+    resources::{model_loader::ModelLoader, *},
 };
 
 impl Engine {
@@ -49,7 +47,7 @@ impl Engine {
         );
         let textures_pool = TexturesPool::new(device, vulkan_context.allocator);
         let samplers_pool = SamplersPool::new(device);
-        let mesh_buffers_pool = MeshBuffersPool::new(5_120);
+        let mesh_buffers_pool = MeshBuffersPool::new(Default::default(), 5_120);
 
         let push_constant_range = PushConstantRange {
             stage_flags: ShaderStageFlags::MeshEXT

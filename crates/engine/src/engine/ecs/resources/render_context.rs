@@ -1,10 +1,9 @@
 use bevy_ecs::resource::Resource;
+use renderer::{CommandGroup, TextureReference};
 use vulkanite::vk::{
     Extent2D,
-    rs::{CommandBuffer, CommandPool, Fence, Image, ImageView, Semaphore},
+    rs::{Image, ImageView, Semaphore},
 };
-
-use crate::engine::resources::textures_pool::TextureReference;
 
 pub struct FrameData {
     pub command_group: CommandGroup,
@@ -12,13 +11,6 @@ pub struct FrameData {
     pub render_semaphore: Semaphore,
     pub draw_texture_reference: TextureReference,
     pub depth_texture_reference: TextureReference,
-}
-
-#[derive(Clone, Copy)]
-pub struct CommandGroup {
-    pub command_pool: CommandPool,
-    pub command_buffer: CommandBuffer,
-    pub fence: Fence,
 }
 
 #[derive(Clone, Copy)]

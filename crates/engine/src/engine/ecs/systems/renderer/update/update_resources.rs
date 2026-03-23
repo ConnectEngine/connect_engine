@@ -7,9 +7,11 @@ use crate::engine::{
     components::camera::Camera,
     resources::{
         DirectionalLight, LightProperties, RendererContext, RendererResources, SceneData,
-        SwappableBuffer, buffers_pool::BuffersPool, frame_context,
+        SwappableBuffer, frame_context,
     },
 };
+
+use renderer::*;
 
 pub fn update_resources_system(
     render_context: Res<RendererContext>,

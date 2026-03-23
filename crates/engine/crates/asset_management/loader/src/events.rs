@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use bevy_ecs::{entity::Entity, event::Event};
 use renderer::{MaterialReference, MeshBufferReference};
-
-use crate::engine::components::local_transform::LocalTransform;
+use shared::LocalTransform;
 
 #[derive(Event)]
 pub struct LoadModelEvent {

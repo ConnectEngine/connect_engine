@@ -4,14 +4,13 @@ use math::Vec4;
 use vulkanite::vk::*;
 
 use crate::engine::{
-    ecs::{
-        RendererContext, RendererResources, VulkanContextResource, buffers_pool::BuffersPool,
-        textures_pool::TexturesPool,
-    },
+    ecs::{RendererContext, RendererResources, VulkanContextResource},
     general::renderer::{
         DescriptorKind, DescriptorSampledImage, DescriptorSetHandle, DescriptorStorageImage,
     },
 };
+
+use renderer::*;
 
 pub fn prepare_default_textures_system(
     vulkan_ctx_resource: Res<VulkanContextResource>,

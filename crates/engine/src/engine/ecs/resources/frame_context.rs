@@ -1,8 +1,7 @@
 use bevy_ecs::resource::Resource;
 use math::Mat4;
+use renderer::TextureReference;
 use vulkanite::vk::rs::CommandBuffer;
-
-use crate::engine::resources::textures_pool::TextureReference;
 
 #[derive(Default, Resource)]
 pub struct FrameContext {

@@ -2,6 +2,7 @@ use asset_importer::{Matrix4x4, node::Node};
 use image::{EncodableLayout, ImageReader};
 use ktx2_rw::Ktx2Texture;
 use nameof::name_of;
+use shared::{Meshlet, Vertex};
 use std::{collections::HashMap, ffi::c_void, io::Cursor, str::FromStr};
 use vulkanite::vk::{
     BufferCopy, BufferUsageFlags, DeviceAddress, Extent3D, Format, ImageUsageFlags,
@@ -18,27 +19,13 @@ use meshopt::{
 };
 
 use crate::engine::{
-    components::{
-        local_transform::LocalTransform,
-        material::{
-            MaterialData, MaterialProperties, MaterialState, MaterialTextures, MaterialType,
-        },
-    },
-    ecs::{
-        buffers_pool::BuffersPool,
-        components::mesh::MeshData,
-        materials_pool::{MaterialReference, MaterialsPool},
-        mesh_buffers_pool::{MeshBuffer, MeshBufferReference, MeshBuffersPool},
-        textures_pool::TexturesPool,
-    },
+    components::local_transform::LocalTransform,
     events::{LoadModelEvent, SpawnEvent, SpawnEventRecord},
     general::renderer::{DescriptorKind, DescriptorSampledImage, DescriptorSetHandle},
-    resources::{
-        MeshObject, Meshlet, RendererContext, RendererResources, Vertex, VulkanContextResource,
-        buffers_pool::{BufferReference, BufferVisibility},
-        textures_pool::{TextureMetadata, TextureReference},
-    },
+    resources::{MeshObject, RendererContext, RendererResources, VulkanContextResource},
 };
+
+use renderer::*;
 
 struct NodeData {
     pub name: String,

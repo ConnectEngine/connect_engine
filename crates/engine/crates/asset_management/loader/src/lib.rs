@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{BufReader, Read},
     path::{Path, PathBuf},
 };
@@ -9,15 +10,20 @@ use bevy_ecs::{
     system::{Res, ResMut},
 };
 use information::Information;
+use math::Mat4;
 use shared::{
-    ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions, Meshlet,
-    Vertex,
+    ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions,
+    LocalTransform, Meshlet, Vertex,
 };
 use uuid::Uuid;
-use vulkanite::vk::BufferUsageFlags;
+use vulkanite::vk::{BufferUsageFlags, DeviceAddress};
 use walkdir::WalkDir;
 
-use renderer::resources::*;
+mod events;
+
+pub use events::*;
+
+use renderer::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AssetType {
@@ -136,8 +142,38 @@ impl Loader {
             >(serialized_model_buf_reader.buffer())
             .unwrap();
 
+            let mut spawn_event = SpawnEvent::default();
+            spawn_event.parent_entity = None;
+            let mut spawn_event_record = SpawnEventRecord::default();
+
+            archived_serialized_model
+                .hierarchy
+                .serialized_nodes
+                .iter()
+                .for_each(|node| {
+                    let local_matrix = Mat4::from_cols_array(&node.matrix.map(|f| f.to_native()));
+
+                    let (local_scale, rotation, position) =
+                        local_matrix.to_scale_rotation_translation();
+                    let transform = LocalTransform {
+                        local_position: position,
+                        local_rotation: rotation,
+                        local_scale,
+                    };
+                    spawn_event_record.name = node.name.to_string();
+                    spawn_event_record.parent_index = node
+                        .parent_index
+                        .as_ref()
+                        .map(|&parent_index_value| parent_index_value.to_native() as usize);
+                    spawn_event_record.transform = transform;
+
+                    spawn_event.spawn_records.push(spawn_event_record.clone());
+                });
+
             let mut mesh_buffers_to_upload =
                 Vec::with_capacity(archived_serialized_model.meshes.len());
+            let mut uploaded_meshes =
+                HashMap::with_capacity(archived_serialized_model.meshes.len());
 
             archived_serialized_model
                 .hierarchy
@@ -145,67 +181,139 @@ impl Loader {
                 .iter()
                 .for_each(|node| {
                     if node.mesh_index.is_some() {
-                        let mesh_index = node.mesh_index.unwrap();
+                        let mesh_index = node.mesh_index.unwrap().to_native() as usize;
 
-                        let serialized_mesh = archived_serialized_model
-                            .meshes
-                            .get(mesh_index.to_native() as usize)
-                            .unwrap();
+                        let mesh_buffer_reference: MeshBufferReference;
+                        let mesh_name: String;
+                        if let std::collections::hash_map::Entry::Vacant(e) =
+                            uploaded_meshes.entry(mesh_index)
+                        {
+                            let serialized_mesh = archived_serialized_model
+                                .meshes
+                                .get(mesh_index as usize)
+                                .unwrap();
 
-                        let vertex_buffer_reference = Self::create_and_copy_to_buffer(
-                            buffers_pool,
-                            serialized_mesh.vertices.as_ptr() as *const _,
-                            serialized_mesh.vertices.len() * std::mem::size_of::<Vertex>(),
-                            std::format!("{}_{}", serialized_mesh.name, stringify!(vertices)),
-                        );
-                        let vertex_indices_buffer_reference = Self::create_and_copy_to_buffer(
-                            buffers_pool,
-                            serialized_mesh.indices.as_ptr() as _,
-                            serialized_mesh.indices.len() * std::mem::size_of::<u32>(),
-                            std::format!("{}_{}", serialized_mesh.name, stringify!(vertex_indices)),
-                        );
-                        let meshlets_buffer_reference = Self::create_and_copy_to_buffer(
-                            buffers_pool,
-                            serialized_mesh.meshlets.as_ptr() as _,
-                            serialized_mesh.meshlets.len() * std::mem::size_of::<Meshlet>(),
-                            std::format!("{}_{}", serialized_mesh.name, stringify!(meshlets)),
-                        );
+                            mesh_name = serialized_mesh.name.to_string();
 
-                        let local_indices_buffer_reference = Self::create_and_copy_to_buffer(
-                            buffers_pool,
-                            serialized_mesh.triangles.as_ptr() as _,
-                            serialized_mesh.triangles.len() * std::mem::size_of::<u8>(),
-                            std::format!("{}_{}", serialized_mesh.name, stringify!(triangles)),
-                        );
+                            let vertex_buffer_reference = Self::create_and_copy_to_buffer(
+                                buffers_pool,
+                                serialized_mesh.vertices.as_ptr() as *const _,
+                                serialized_mesh.vertices.len() * std::mem::size_of::<Vertex>(),
+                                std::format!("{}_{}", serialized_mesh.name, stringify!(vertices)),
+                            );
+                            let vertex_indices_buffer_reference = Self::create_and_copy_to_buffer(
+                                buffers_pool,
+                                serialized_mesh.indices.as_ptr() as _,
+                                serialized_mesh.indices.len() * std::mem::size_of::<u32>(),
+                                std::format!(
+                                    "{}_{}",
+                                    serialized_mesh.name,
+                                    stringify!(vertex_indices)
+                                ),
+                            );
+                            let meshlets_buffer_reference = Self::create_and_copy_to_buffer(
+                                buffers_pool,
+                                serialized_mesh.meshlets.as_ptr() as _,
+                                serialized_mesh.meshlets.len() * std::mem::size_of::<Meshlet>(),
+                                std::format!("{}_{}", serialized_mesh.name, stringify!(meshlets)),
+                            );
 
-                        let mesh_data = MeshData {
-                            vertices: rkyv::deserialize::<Vec<Vertex>, rkyv::rancor::Error>(
-                                &serialized_mesh.vertices,
-                            )
-                            .unwrap(),
-                            indices: rkyv::deserialize::<Vec<u32>, rkyv::rancor::Error>(
-                                &serialized_mesh.indices,
-                            )
-                            .unwrap(),
-                        };
+                            let local_indices_buffer_reference = Self::create_and_copy_to_buffer(
+                                buffers_pool,
+                                serialized_mesh.triangles.as_ptr() as _,
+                                serialized_mesh.triangles.len() * std::mem::size_of::<u8>(),
+                                std::format!("{}_{}", serialized_mesh.name, stringify!(triangles)),
+                            );
 
-                        let mesh_buffer = MeshBuffer {
-                            mesh_object_device_address: Default::default(),
-                            vertex_buffer_reference,
-                            vertex_indices_buffer_reference,
-                            meshlets_buffer_reference,
-                            local_indices_buffer_reference,
-                            meshlets_count: serialized_mesh.meshlets.len(),
-                            mesh_data,
-                        };
+                            let mesh_data = MeshData {
+                                vertices: rkyv::deserialize::<Vec<Vertex>, rkyv::rancor::Error>(
+                                    &serialized_mesh.vertices,
+                                )
+                                .unwrap(),
+                                indices: rkyv::deserialize::<Vec<u32>, rkyv::rancor::Error>(
+                                    &serialized_mesh.indices,
+                                )
+                                .unwrap(),
+                            };
 
-                        let mesh_buffer_reference =
-                            mesh_buffers_pool.insert_mesh_buffer(mesh_buffer);
+                            let mesh_buffer = MeshBuffer {
+                                mesh_object_device_address: Default::default(),
+                                vertex_buffer_reference,
+                                vertex_indices_buffer_reference,
+                                meshlets_buffer_reference,
+                                local_indices_buffer_reference,
+                                meshlets_count: serialized_mesh.meshlets.len(),
+                                mesh_data,
+                            };
 
-                        mesh_buffers_to_upload
-                            .insert(mesh_index.to_native() as usize, mesh_buffer_reference);
+                            mesh_buffer_reference =
+                                mesh_buffers_pool.insert_mesh_buffer(mesh_buffer);
+
+                            mesh_buffers_to_upload.push(mesh_buffer_reference);
+
+                            e.insert((mesh_name.clone(), mesh_buffer_reference));
+                        } else {
+                            let uploaded_mesh = uploaded_meshes.get(&mesh_index).unwrap();
+                            mesh_name = uploaded_mesh.0.clone();
+                            mesh_buffer_reference = uploaded_mesh.1;
+                        }
+
+                        spawn_event_record.name = mesh_name;
+                        spawn_event_record.parent_index = node
+                            .parent_index
+                            .as_ref()
+                            .map(|parent_index_value| parent_index_value.to_native() as usize);
+                        // FIXME
+                        //spawn_event_record.material_reference = Some(material_reference);
+                        spawn_event_record.material_reference = None;
+                        spawn_event_record.mesh_buffer_reference = Some(mesh_buffer_reference);
+                        spawn_event_record.transform = LocalTransform::IDENTITY;
+
+                        spawn_event.spawn_records.push(spawn_event_record.clone());
                     }
                 });
+
+            let mesh_objects_to_write = mesh_buffers_to_upload
+                .iter()
+                .map(|mesh_buffer_reference| {
+                    let mesh_buffer_ref = unsafe {
+                        mesh_buffers_pool
+                            .get_mesh_buffer(*mesh_buffer_reference)
+                            .unwrap_unchecked()
+                    };
+
+                    let device_address_vertex_buffer: DeviceAddress = mesh_buffer_ref
+                        .vertex_buffer_reference
+                        .get_buffer_info()
+                        .device_address;
+                    let device_address_vertex_indices_buffer: DeviceAddress = mesh_buffer_ref
+                        .vertex_indices_buffer_reference
+                        .get_buffer_info()
+                        .device_address;
+                    let device_address_meshlets_buffer: DeviceAddress = mesh_buffer_ref
+                        .meshlets_buffer_reference
+                        .get_buffer_info()
+                        .device_address;
+                    let device_address_local_indices_buffer: DeviceAddress = mesh_buffer_ref
+                        .local_indices_buffer_reference
+                        .get_buffer_info()
+                        .device_address;
+
+                    MeshObject {
+                        device_address_vertex_buffer,
+                        device_address_vertex_indices_buffer,
+                        device_address_meshlets_buffer,
+                        device_address_local_indices_buffer,
+                        ..Default::default()
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            let mesh_object_size = std::mem::size_of::<MeshObject>();
+            let mesh_objects_device_address = mesh_buffers_pool
+                .get_mesh_objects_buffer_reference()
+                .get_buffer_info()
+                .device_address;
         });
     }
 

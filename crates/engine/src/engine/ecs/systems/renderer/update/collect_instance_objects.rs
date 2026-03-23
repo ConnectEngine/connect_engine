@@ -1,10 +1,10 @@
 use bevy_ecs::system::{Query, Res, ResMut};
 
 use crate::engine::{
-    components::{local_transform::GlobalTransform, mesh::Mesh},
-    ecs::{InstanceObject, materials_pool::MaterialsPool, mesh_buffers_pool::MeshBuffersPool},
-    resources::RendererResources,
+    components::local_transform::GlobalTransform, ecs::InstanceObject, resources::RendererResources,
 };
+
+use renderer::*;
 
 // TODO: Take into account if GlobalTransform really changed or not and update if necessary.
 pub fn collect_instance_objects_system(

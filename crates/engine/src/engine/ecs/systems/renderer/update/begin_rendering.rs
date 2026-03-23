@@ -8,11 +8,12 @@ use vulkanite::{
 };
 
 use crate::engine::{
-    ecs::textures_pool::TexturesPool,
     general::renderer::DescriptorSetHandle,
     resources::{FrameContext, GraphicsPushConstant, RendererContext, RendererResources},
     utils::{self, transition_image},
 };
+
+use renderer::*;
 
 pub fn begin_rendering_system(
     render_context: Res<RendererContext>,

@@ -1,11 +1,12 @@
 use bevy_ecs::system::{Res, ResMut};
 
 use crate::engine::{
-    ecs::textures_pool::TexturesPool,
     resources::{FrameContext, RendererContext},
     utils::{copy_image_to_image, transition_image},
 };
 use vulkanite::vk::*;
+
+use renderer::*;
 
 pub fn end_rendering_system(
     renderer_context: Res<RendererContext>,

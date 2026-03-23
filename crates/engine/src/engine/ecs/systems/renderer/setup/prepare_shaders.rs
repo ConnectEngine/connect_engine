@@ -1,16 +1,17 @@
 use bevy_ecs::system::{Commands, Res, ResMut};
+use renderer::MeshBuffersPool;
 use vulkanite::vk::{rs::*, *};
 
 use crate::engine::{
     ecs::{
         InstanceObject, MeshObject, RendererContext, RendererResources, SceneData, ShaderObject,
         SwappableBuffer, VulkanContextResource,
-        buffers_pool::{BufferVisibility, BuffersPool},
-        materials_pool::MaterialsPool,
     },
     general::renderer::DescriptorSetHandle,
     utils::{ShaderInfo, load_shader},
 };
+
+use renderer::*;
 
 pub fn prepare_shaders_system(
     mut commands: Commands,
@@ -19,6 +20,7 @@ pub fn prepare_shaders_system(
     mut renderer_resources: ResMut<RendererResources>,
     descriptor_set_handle: Res<DescriptorSetHandle>,
     mut buffers_pool: ResMut<BuffersPool>,
+    mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
     let device = vulkan_ctx_resource.device;
 
@@ -131,6 +133,7 @@ pub fn prepare_shaders_system(
     commands.insert_resource(materials_pool);
 
     renderer_resources.mesh_objects_buffer_reference = mesh_objects_buffer_reference;
+    mesh_buffers_pool.set_mesh_objects_buffer_reference(mesh_objects_buffer_reference);
 }
 
 fn create_shaders(device: Device, shader_infos: &[ShaderInfo]) -> Vec<ShaderObject> {

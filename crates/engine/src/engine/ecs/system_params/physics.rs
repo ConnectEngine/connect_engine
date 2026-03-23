@@ -3,14 +3,11 @@ use bevy_ecs::{
     system::{Commands, Res, ResMut, SystemParam},
 };
 use math::Vec3;
+use renderer::MeshBuffersPool;
 
-use crate::engine::{
-    Mesh,
-    ecs::{
-        mesh_buffers_pool::MeshBuffersPool,
-        physics::{PhysicsManager, RigidBody},
-    },
-};
+use crate::engine::ecs::physics::{PhysicsManager, RigidBody};
+
+use renderer::*;
 
 #[derive(SystemParam)]
 pub struct Physics<'w, 's> {

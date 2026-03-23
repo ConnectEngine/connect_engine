@@ -1,13 +1,16 @@
-pub mod buffers_pool;
-pub mod materials_pool;
-pub mod mesh_buffers_pool;
 pub mod model_loader;
-pub mod samplers_pool;
-pub mod textures_pool;
 
-pub use buffers_pool::*;
-pub use materials_pool::*;
-pub use mesh_buffers_pool::*;
+use bytemuck::{Pod, Zeroable};
 pub use model_loader::*;
-pub use samplers_pool::*;
-pub use textures_pool::*;
+use padding_struct::padding_struct;
+use vulkanite::vk::DeviceAddress;
+
+#[repr(C)]
+#[padding_struct]
+#[derive(Default, Clone, Copy, Pod, Zeroable)]
+pub struct MeshObject {
+    pub device_address_vertex_buffer: DeviceAddress,
+    pub device_address_vertex_indices_buffer: DeviceAddress,
+    pub device_address_meshlets_buffer: DeviceAddress,
+    pub device_address_local_indices_buffer: DeviceAddress,
+}
