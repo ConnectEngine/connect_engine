@@ -16,7 +16,7 @@ use shared::{
     LocalTransform, Meshlet, Vertex,
 };
 use uuid::Uuid;
-use vulkanite::vk::{BufferUsageFlags, DeviceAddress};
+use vulkanite::vk::{BufferCopy, BufferUsageFlags, DeviceAddress};
 use walkdir::WalkDir;
 
 mod events;
@@ -314,6 +314,38 @@ impl Loader {
                 .get_mesh_objects_buffer_reference()
                 .get_buffer_info()
                 .device_address;
+
+            let mesh_objects_to_copy_regions = mesh_buffers_to_upload
+                .into_iter()
+                .enumerate()
+                .map(|(src_mesh_buffer_index, mesh_buffer_reference)| {
+                    let src_offset = src_mesh_buffer_index as u32 * mesh_object_size as u32;
+                    let dst_offset = mesh_buffer_reference.get_index() * mesh_object_size as u32;
+
+                    let mesh_buffer = unsafe {
+                        mesh_buffers_pool
+                            .get_mesh_buffer_mut(mesh_buffer_reference)
+                            .unwrap_unchecked()
+                    };
+
+                    mesh_buffer.mesh_object_device_address =
+                        mesh_objects_device_address + dst_offset as u64;
+
+                    BufferCopy {
+                        src_offset: src_offset as _,
+                        dst_offset: dst_offset as _,
+                        size: mesh_object_size as _,
+                    }
+                })
+                .collect::<Vec<BufferCopy>>();
+
+            unsafe {
+                buffers_pool.transfer_data_to_buffer_with_offset(
+                    mesh_buffers_pool.get_mesh_objects_buffer_reference(),
+                    mesh_objects_to_write.as_ptr() as *const _,
+                    &mesh_objects_to_copy_regions,
+                );
+            }
         });
     }
 
