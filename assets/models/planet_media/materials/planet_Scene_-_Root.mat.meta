@@ -1,0 +1,5 @@
+[Material]
+uuid = "aefb6366-b7ad-5888-a956-4b289b4e47eb"
+name = "Scene_-_Root"
+path_buf = "models/planet.glb"
+textures = ["bd5ffc6a-e545-5719-b8a5-a7a8498b4e6b"]

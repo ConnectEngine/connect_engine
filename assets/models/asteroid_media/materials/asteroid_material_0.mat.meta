@@ -1,0 +1,5 @@
+[Material]
+uuid = "20a66aff-e8c2-5de2-96a3-f48e764ba45e"
+name = "material_0"
+path_buf = "models/asteroid.glb"
+textures = ["e594fc2d-f65a-56d1-8e28-7a715befe797"]

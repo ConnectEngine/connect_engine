@@ -11,6 +11,7 @@ use bevy_ecs::{
 };
 use information::Information;
 use math::Mat4;
+use memmap2::Mmap;
 use shared::{
     ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions,
     LocalTransform, Meshlet, Vertex,
@@ -133,14 +134,13 @@ impl Loader {
         mesh_buffers_pool: &mut MeshBuffersPool,
     ) {
         self.models_to_load.drain(..).for_each(|model_to_load| {
-            let serialized_model_buf_reader =
-                BufReader::new(std::fs::File::open(model_to_load.path).unwrap());
+            let serialized_model_file = std::fs::File::open(&model_to_load.path).unwrap();
 
-            let archived_serialized_model = rkyv::access::<
-                ArchivedSerializedModel,
-                rkyv::rancor::Error,
-            >(serialized_model_buf_reader.buffer())
-            .unwrap();
+            let serialized_model_map = unsafe { Mmap::map(&serialized_model_file).unwrap() };
+
+            let archived_serialized_model =
+                rkyv::access::<ArchivedSerializedModel, rkyv::rancor::Error>(&serialized_model_map)
+                    .unwrap();
 
             let mut spawn_event = SpawnEvent::default();
             spawn_event.parent_entity = None;

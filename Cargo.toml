@@ -67,6 +67,7 @@ vulkanite = { git = "https://github.com/Jerrody/vulkanite", features = [
 ] }
 vma = { package = "vk-mem", git = "https://github.com/Jerrody/vulkanite-mem-rs", branch = "vulkanite" }
 slotmap = { git = "https://github.com/Jerrody/slotmap" }
+memmap2 = "0.9.10"
 ahash = "0.8.12"
 nameof = "1.3.0"
 

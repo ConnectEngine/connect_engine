@@ -24,6 +24,7 @@ meshopt = { workspace = true }
 padding-struct = { workspace = true }
 renderer = { workspace = true }
 vulkanite = { workspace = true }
+memmap2 = { workspace = true }
 
 uuid = { workspace = true }
 uuid-simd = { workspace = true }
