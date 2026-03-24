@@ -11,7 +11,7 @@ use std::{
 use uuid::{Uuid, uuid};
 use walkdir::WalkDir;
 
-use asset_importer::{Matrix4x4, node::Node, postprocess::PostProcessSteps};
+use asset_importer::{Matrix4x4, importer, node::Node, postprocess::PostProcessSteps};
 use bevy_ecs::{
     resource::Resource,
     system::{Res, ResMut},
@@ -542,12 +542,13 @@ fn serialize_model_asset(
                     let (meshlets, vertex_indices, triangles) =
                         generate_meshlets(&indices, &vertex_data_adapter);
 
-                    let serialized_mesh = SerializedMesh {
+                    let mut serialized_mesh = SerializedMesh {
                         name: mesh.name(),
                         vertices,
                         indices: vertex_indices,
                         meshlets,
                         triangles,
+                        material_uuid: Uuid::nil(),
                     };
 
                     mesh_index = serialized_model.meshes.len();
@@ -619,7 +620,7 @@ fn serialize_model_asset(
                         sampler_index: Default::default(),
                     };
                     let material_data_raw = bytemuck::bytes_of(&material_data);
-                    serialize_material(
+                    let material_uuid = serialize_material(
                         importer,
                         PathBuf::from(model_path),
                         material_data_raw,
@@ -627,6 +628,9 @@ fn serialize_model_asset(
                         &material.name(),
                         textures_assets_metadata,
                     );
+
+                    // TODO: Move to the initialization place.
+                    serialized_mesh.material_uuid = material_uuid;
 
                     /////////////////////////////////////////////////////////////
 
@@ -714,24 +718,13 @@ fn extract_texture_from_material(
 }
 
 fn serialize_material(
-    importer: &mut Importer,
+    importer: &Importer,
     mut model_path: PathBuf,
     material_data: &[u8],
     model_name: &str,
     material_name: &str,
     mut associated_textures_assets_metadata: Vec<TextureAssetMetadata>,
-) {
-    let relative_path = model_path
-        .strip_prefix(&importer.asset_folder_path_buffer)
-        .unwrap_or(&model_path)
-        .to_string_lossy();
-
-    let normalized_asset_path = relative_path.replace("\\", "/");
-
-    let uuid_name = std::format!("{}{}", normalized_asset_path, material_name);
-    let uuid = Uuid::new_v5(&Importer::ENGINE_ASSET_NAMESPACE, uuid_name.as_bytes());
-    let uuid_str = uuid.as_simple().to_string();
-
+) -> Uuid {
     model_path.pop();
     let target_path = model_path
         .join(std::format!("{}_media", model_name))
@@ -741,6 +734,12 @@ fn serialize_material(
     let serialized_material_path_buffer = target_path
         .join(std::format!("{}_{}.mat", model_name, material_name))
         .clone();
+    let normalized_asset_path = serialized_material_path_buffer
+        .strip_prefix(&importer.asset_folder_path_buffer)
+        .unwrap();
+
+    let uuid_name = std::format!("{}{}", normalized_asset_path.display(), material_name);
+    let uuid = Uuid::new_v5(&Importer::ENGINE_ASSET_NAMESPACE, uuid_name.as_bytes());
 
     let texture_inputs = associated_textures_assets_metadata
         .iter()
@@ -776,7 +775,7 @@ fn serialize_material(
     let material_asset_metadata = AssetMetadata::Material(MaterialAssetMetadata {
         uuid,
         name: material_name.to_string(),
-        path_buf: PathBuf::from(normalized_asset_path),
+        path_buf: normalized_asset_path.to_path_buf(),
         textures,
         // TODO: Temp commenting.
         // textures,
@@ -789,6 +788,8 @@ fn serialize_material(
         serialized_texture_asset_metadata,
     )
     .unwrap();
+
+    uuid
 }
 
 fn serialize_texture_asset(

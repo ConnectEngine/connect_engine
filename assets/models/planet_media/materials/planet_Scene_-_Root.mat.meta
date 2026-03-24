@@ -1,5 +1,5 @@
 [Material]
-uuid = "aefb6366-b7ad-5888-a956-4b289b4e47eb"
+uuid = "2db427a8-a1f4-5baa-b377-ba7e952d883b"
 name = "Scene_-_Root"
-path_buf = "models/planet.glb"
+path_buf = 'models\planet_media\materials\planet_Scene_-_Root.mat'
 textures = ["bd5ffc6a-e545-5719-b8a5-a7a8498b4e6b"]

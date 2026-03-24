@@ -12,10 +12,7 @@ use bevy_ecs::{
 use information::Information;
 use math::Mat4;
 use memmap2::Mmap;
-use shared::{
-    ArchivedSerializedModel, ArtifactsFoldersNames, AssetMetadata, AssetsExtensions,
-    LocalTransform, Meshlet, Vertex,
-};
+use shared::*;
 use uuid::Uuid;
 use vulkanite::vk::{BufferCopy, BufferUsageFlags, DeviceAddress};
 use walkdir::WalkDir;
@@ -83,6 +80,7 @@ impl Loader {
     pub(crate) fn resolve_meta_files(
         &mut self,
         assset_database: &mut AssetDatabase,
+        assets_folder_path: &Path,
         artifacts_folder_path: &Path,
     ) {
         self.collected_meta_files
@@ -116,12 +114,7 @@ impl Loader {
                     self.materials_to_load.push(AssetToLoad {
                         uuid: material_asset_metadata.uuid,
                         name: material_asset_metadata.name.clone(),
-                        path: Self::resolve_path(
-                            AssetType::Material,
-                            &material_asset_metadata.name,
-                            material_asset_metadata.uuid,
-                            artifacts_folder_path,
-                        ),
+                        path: assets_folder_path.join(material_asset_metadata.path_buf),
                     });
                 }
             });
@@ -133,7 +126,7 @@ impl Loader {
         buffers_pool: &mut BuffersPool,
         mesh_buffers_pool: &mut MeshBuffersPool,
     ) {
-        self.models_to_load.drain(..).for_each(|model_to_load| {
+        self.models_to_load.iter().for_each(|model_to_load| {
             let serialized_model_file = std::fs::File::open(&model_to_load.path).unwrap();
 
             let serialized_model_map = unsafe { Mmap::map(&serialized_model_file).unwrap() };
@@ -192,6 +185,9 @@ impl Loader {
                                 .meshes
                                 .get(mesh_index as usize)
                                 .unwrap();
+
+                            // TODO: Handle Material == None
+                            self.load_material(serialized_mesh.material_uuid);
 
                             mesh_name = serialized_mesh.name.to_string();
 
@@ -349,6 +345,25 @@ impl Loader {
         });
     }
 
+    fn load_material(&self, material_uuid: Uuid) {
+        let found_material = self
+            .materials_to_load
+            .iter()
+            .find(|material_asset| material_asset.uuid == material_uuid)
+            .expect(&std::format!(
+                "Cannot find material asset with UUID: {}",
+                material_uuid
+            ));
+
+        let serialized_material_file = std::fs::File::open(&found_material.path).unwrap();
+        let serialized_material_map = unsafe { Mmap::map(&serialized_material_file).unwrap() };
+        let archived_serialized_material = rkyv::access::<
+            ArchivedSerializedMaterial,
+            rkyv::rancor::Error,
+        >(&serialized_material_map)
+        .unwrap();
+    }
+
     pub(crate) fn resolve_path(
         asset_type: AssetType,
         name: &str,
@@ -412,6 +427,9 @@ pub fn load_assets_system(
     loader.collect_meta_files(editor_application.get_assets_folder_path());
     loader.resolve_meta_files(
         &mut asset_database,
+        information
+            .get_editor_application()
+            .get_assets_folder_path(),
         information
             .get_editor_application()
             .get_artifacts_folder_path(),

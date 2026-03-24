@@ -15,6 +15,7 @@ pub struct SerializedMesh {
     pub indices: Vec<u32>,
     pub meshlets: Vec<Meshlet>,
     pub triangles: Vec<u8>,
+    pub material_uuid: Uuid,
 }
 
 #[repr(C)]
