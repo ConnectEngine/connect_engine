@@ -15,6 +15,7 @@ pub struct SerializedMesh {
     pub indices: Vec<u32>,
     pub meshlets: Vec<Meshlet>,
     pub triangles: Vec<u8>,
+    // FIXME: DO NOT STORE UUID OF MATERIAL, IT'S SHOULD BE IN MODEL ASSET METADATA INSTEAD!
     pub material_uuid: Uuid,
 }
 
