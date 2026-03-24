@@ -2,7 +2,7 @@ use bevy_ecs::resource::Resource;
 use bytemuck::{Pod, Zeroable};
 use fast_image_resize::{PixelType, images::Image};
 use ktx2_rw::{BasisCompressionParams, Ktx2Texture};
-use shared::TextureKey;
+use shared::{TextureKey, TextureMetadata};
 use slotmap::{Key, SlotMap};
 use vma::{Alloc, Allocation, AllocationCreateInfo, Allocator, MemoryUsage};
 use vulkanite::vk::{
@@ -11,14 +11,6 @@ use vulkanite::vk::{
     ImageViewCreateInfo, ImageViewType, MemoryPropertyFlags, SampleCountFlags, SharingMode,
     rs::Device,
 };
-
-#[repr(C)]
-#[derive(Default, Clone, Copy, Pod, Zeroable)]
-pub struct TextureMetadata {
-    pub width: u32,
-    pub height: u32,
-    pub mip_levels_count: u32,
-}
 
 pub struct AllocatedImage {
     pub image: vulkanite::vk::rs::Image,
@@ -91,6 +83,7 @@ impl TexturesPool {
             width: extent.width,
             height: extent.height,
             mip_levels_count,
+            texture_format: format as u32,
         };
 
         let mut ktx_texture = None;
@@ -191,6 +184,28 @@ impl TexturesPool {
             ktx_texture = Some(texture);
         }
 
+        let uploaded_texture = self.upload_texture(
+            format,
+            extent,
+            usage_flags,
+            mip_levels_count,
+            aspect_flags,
+            read_only,
+        );
+
+        (uploaded_texture, ktx_texture)
+    }
+
+    #[must_use]
+    pub fn upload_texture(
+        &mut self,
+        format: Format,
+        extent: Extent3D,
+        usage_flags: ImageUsageFlags,
+        mip_levels_count: u32,
+        aspect_flags: ImageAspectFlags,
+        read_only: bool,
+    ) -> TextureReference {
         let allocation_info = AllocationCreateInfo {
             usage: MemoryUsage::Auto,
             required_flags: MemoryPropertyFlags::DeviceLocal,
@@ -230,10 +245,11 @@ impl TexturesPool {
                 width: extent.width,
                 height: extent.height,
                 mip_levels_count,
+                texture_format: format as u32,
             },
         };
 
-        (self.insert_image(allocated_image, read_only), ktx_texture)
+        self.insert_image(allocated_image, read_only)
     }
 
     fn insert_image(

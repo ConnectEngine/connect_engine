@@ -14,7 +14,9 @@ use math::Mat4;
 use memmap2::Mmap;
 use shared::*;
 use uuid::Uuid;
-use vulkanite::vk::{BufferCopy, BufferUsageFlags, DeviceAddress};
+use vulkanite::vk::{
+    BufferCopy, BufferUsageFlags, DeviceAddress, Format, ImageAspectFlags, ImageUsageFlags,
+};
 use walkdir::WalkDir;
 
 mod events;
@@ -124,6 +126,7 @@ impl Loader {
         &mut self,
         asset_database: &mut AssetDatabase,
         buffers_pool: &mut BuffersPool,
+        textures_pool: &mut TexturesPool,
         mesh_buffers_pool: &mut MeshBuffersPool,
     ) {
         self.models_to_load.iter().for_each(|model_to_load| {
@@ -187,7 +190,7 @@ impl Loader {
                                 .unwrap();
 
                             // TODO: Handle Material == None
-                            self.load_material(serialized_mesh.material_uuid);
+                            self.load_material(textures_pool, serialized_mesh.material_uuid);
 
                             mesh_name = serialized_mesh.name.to_string();
 
@@ -345,7 +348,7 @@ impl Loader {
         });
     }
 
-    fn load_material(&self, material_uuid: Uuid) {
+    fn load_material(&self, textures_pool: &mut TexturesPool, material_uuid: Uuid) {
         let found_material = self
             .materials_to_load
             .iter()
@@ -362,6 +365,58 @@ impl Loader {
             rkyv::rancor::Error,
         >(&serialized_material_map)
         .unwrap();
+
+        archived_serialized_material
+            .texture_inputs
+            .iter()
+            .for_each(|texture_input| {
+                let target_texture_uuid = texture_input.uuid;
+
+                self.load_texture(textures_pool, target_texture_uuid);
+            });
+    }
+
+    fn load_texture(&self, textures_pool: &mut TexturesPool, texture_uuid: Uuid) {
+        let found_texture = self
+            .textures_to_load
+            .iter()
+            .find(|texture_to_load| texture_to_load.uuid == texture_uuid)
+            .expect(&std::format!(
+                "Cannot find texture asset with UUID: {}",
+                texture_uuid
+            ));
+
+        let serialized_texture_file = std::fs::File::open(&found_texture.path).unwrap();
+        let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
+
+        let mut ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
+        let texture_metadata_raw = ktx_texture
+            .get_metadata(stringify!(TextureMetadata))
+            .unwrap();
+        let texture_metadata = bytemuck::from_bytes::<TextureMetadata>(&texture_metadata_raw);
+
+        self.upload_texture(textures_pool, texture_metadata, &serialized_texture_map);
+    }
+
+    // TODO: Finish implementation of texture uploading.
+    pub fn upload_texture(
+        &self,
+        textures_pool: &mut TexturesPool,
+        textutre_metadata: &TextureMetadata,
+        data: &[u8],
+    ) {
+        textures_pool.upload_texture(
+            textutre_metadata.get_format(),
+            vulkanite::vk::Extent3D {
+                width: textutre_metadata.width,
+                height: textutre_metadata.height,
+                depth: 1,
+            },
+            ImageUsageFlags::ColorAttachment,
+            textutre_metadata.mip_levels_count,
+            ImageAspectFlags::Color,
+            true,
+        );
     }
 
     pub(crate) fn resolve_path(
@@ -420,6 +475,7 @@ pub fn load_assets_system(
     mut loader: ResMut<Loader>,
     mut asset_database: ResMut<AssetDatabase>,
     mut buffers_pool: ResMut<BuffersPool>,
+    mut textures_pool: ResMut<TexturesPool>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
     let editor_application = information.get_editor_application();
@@ -437,6 +493,7 @@ pub fn load_assets_system(
     loader.load_assets(
         &mut asset_database,
         &mut buffers_pool,
+        &mut textures_pool,
         &mut mesh_buffers_pool,
     );
 }

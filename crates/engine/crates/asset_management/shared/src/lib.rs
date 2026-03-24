@@ -1,5 +1,6 @@
 use math::*;
 use std::path::PathBuf;
+use vulkanite::vk::Format;
 
 use bevy_ecs::{component::Component, name::Name};
 use bytemuck::{Pod, Zeroable};
@@ -26,6 +27,22 @@ pub struct TextureMetadata {
     pub width: u32,
     pub height: u32,
     pub mip_levels_count: u32,
+}
+
+impl TextureMetadata {
+    // TODO: Make proper functionality.
+    pub fn get_format(&self) -> Format {
+        match self.texture_format {
+            132 => Format::Bc1RgbSrgbBlock,
+            138 => Format::Bc3SrgbBlock,
+            140 => Format::Bc4SnormBlock,
+            142 => Format::Bc5SnormBlock,
+            144 => Format::Bc6HSfloatBlock,
+            146 => Format::Bc7SrgbBlock,
+            // TODO: Implement robust error handling later.
+            _ => panic!("Unsupported texture format: {}", self.texture_format),
+        }
+    }
 }
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]

@@ -2,7 +2,7 @@ use asset_importer::{Matrix4x4, node::Node};
 use image::{EncodableLayout, ImageReader};
 use ktx2_rw::Ktx2Texture;
 use nameof::name_of;
-use shared::{Meshlet, Vertex};
+use shared::{Meshlet, TextureMetadata, Vertex};
 use std::{collections::HashMap, ffi::c_void, io::Cursor, str::FromStr};
 use vulkanite::vk::{
     BufferCopy, BufferUsageFlags, DeviceAddress, Extent3D, Format, ImageUsageFlags,
