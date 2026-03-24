@@ -100,7 +100,7 @@ impl TexturesPool {
             && let Some(data) = data
         {
             let target_ktx_format = match format {
-                Format::Bc3SrgbBlock | Format::Bc1RgbSrgbBlock => ktx2_rw::VkFormat::R8G8B8A8Srgb,
+                Format::Bc3SrgbBlock | Format::Bc1RgbSrgbBlock => ktx2_rw::VkFormat::R8G8B8A8_SRGB,
                 _ => panic!("Unsupported KTX format: {:?}!", format),
             };
 

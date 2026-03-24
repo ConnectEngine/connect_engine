@@ -823,7 +823,7 @@ fn serialize_texture_asset(
     };
 
     let target_ktx_format = match texture_entry.format {
-        TextureFormat::Bc1 | TextureFormat::Bc3 => ktx2_rw::VkFormat::R8G8B8A8Srgb,
+        TextureFormat::Bc1 | TextureFormat::Bc3 => ktx2_rw::VkFormat::R8G8B8A8_SRGB,
         _ => panic!("Unsupported KTX format: {:?}!", texture_entry.format),
     };
 
