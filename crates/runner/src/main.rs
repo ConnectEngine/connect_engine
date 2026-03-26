@@ -11,6 +11,9 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
+#[global_allocator]
+static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
+
 #[derive(Default)]
 struct Application {
     window: Option<Box<dyn Window>>,

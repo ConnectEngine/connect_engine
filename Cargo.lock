@@ -3567,6 +3567,7 @@ dependencies = [
  "engine",
  "game_logic",
  "libloading 0.9.0",
+ "snmalloc-rs",
  "winit",
 ]
 
@@ -3911,6 +3912,24 @@ checksum = "4aaa7368fcf4852a4c2dd92df0cace6a71f2091ca0a23391ce7f3a31833f1523"
 dependencies = [
  "borsh",
  "serde_core",
+]
+
+[[package]]
+name = "snmalloc-rs"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "530a04ae687609072d0edd38866406fbbcd23d2f716791437e312ec4d64a355a"
+dependencies = [
+ "snmalloc-sys",
+]
+
+[[package]]
+name = "snmalloc-sys"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a96cbeb16d6bcc5979f80ec907582a886b7fb3b9a707678b63dd93a10d8ee858"
+dependencies = [
+ "cmake",
 ]
 
 [[package]]
