@@ -366,6 +366,7 @@ impl Loader {
         >(&serialized_material_map)
         .unwrap();
 
+        // FIXME: Some issue, when creates image on Vulkan side, due to (probably) unspecified image creation limits.
         archived_serialized_material
             .texture_inputs
             .iter()
