@@ -891,15 +891,18 @@ fn serialize_texture_asset(
     }
 
     let texture_metadata = TextureMetadata {
-        texture_format: texture_entry.format as u32,
+        texture_format: texture_entry.format,
         width,
         height,
         mip_levels_count,
+        ..Default::default()
     };
+    let texture_metadata_raw = &rkyv::to_bytes::<rkyv::rancor::Error>(&texture_metadata).unwrap();
+
     ktx_texture
         .set_metadata(
             stringify!(TextureMetadata),
-            bytemuck::bytes_of(&texture_metadata),
+            &texture_metadata_raw.as_bytes(),
         )
         .unwrap();
 

@@ -21,28 +21,13 @@ pub struct SerializedMesh {
 }
 
 #[repr(C)]
-#[derive(Default, Clone, Copy, Pod, Zeroable)]
+#[padding_struct]
+#[derive(Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct TextureMetadata {
-    pub texture_format: u32,
+    pub texture_format: TextureFormat,
     pub width: u32,
     pub height: u32,
     pub mip_levels_count: u32,
-}
-
-impl TextureMetadata {
-    // TODO: Make proper functionality.
-    pub fn get_format(&self) -> Format {
-        match self.texture_format {
-            132 => Format::Bc1RgbSrgbBlock,
-            138 => Format::Bc3SrgbBlock,
-            140 => Format::Bc4SnormBlock,
-            142 => Format::Bc5SnormBlock,
-            144 => Format::Bc6HSfloatBlock,
-            146 => Format::Bc7SrgbBlock,
-            // TODO: Implement robust error handling later.
-            _ => panic!("Unsupported texture format: {}", self.texture_format),
-        }
-    }
 }
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
@@ -222,16 +207,62 @@ pub struct ModelEntry {
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub enum TextureFormat {
-    RGBA8,
-    RGB8,
+    #[default]
+    RGBA8Srgb,
+    RGB8Srgb,
+    RGBA8Unorm,
+    RGBA16Sfloat,
+    D32Sfloat,
     Bc1,
     Bc3,
     Bc4,
     Bc5,
     Bc6H,
     Bc7,
+}
+
+impl TryFrom<Format> for TextureFormat {
+    type Error = Format;
+
+    fn try_from(v: Format) -> Result<Self, Self::Error> {
+        match v {
+            Format::R8G8B8A8Srgb => Ok(TextureFormat::RGBA8Srgb),
+            Format::R8G8B8Srgb => Ok(TextureFormat::RGB8Srgb),
+            Format::R8G8B8A8Unorm => Ok(TextureFormat::RGBA8Unorm),
+            Format::R16G16B16A16Sfloat => Ok(TextureFormat::RGBA16Sfloat),
+            Format::D32Sfloat => Ok(TextureFormat::D32Sfloat),
+            Format::Bc1RgbSrgbBlock => Ok(TextureFormat::Bc1),
+            Format::Bc3SrgbBlock => Ok(TextureFormat::Bc3),
+            Format::Bc4UnormBlock => Ok(TextureFormat::Bc4),
+            Format::Bc5UnormBlock => Ok(TextureFormat::Bc5),
+            Format::Bc6HSfloatBlock => Ok(TextureFormat::Bc6H),
+            Format::Bc7SrgbBlock => Ok(TextureFormat::Bc7),
+            _ => Err(v),
+        }
+    }
+}
+
+impl TryInto<Format> for TextureFormat {
+    type Error = Self;
+
+    fn try_into(self) -> Result<Format, Self::Error> {
+        match self {
+            TextureFormat::RGBA8Srgb => Ok(Format::R8G8B8A8Srgb),
+            TextureFormat::RGB8Srgb => Ok(Format::R8G8B8Srgb),
+            TextureFormat::RGBA8Unorm => Ok(Format::R8G8B8A8Unorm),
+            TextureFormat::RGBA16Sfloat => Ok(Format::R16G16B16A16Sfloat),
+            TextureFormat::D32Sfloat => Ok(Format::D32Sfloat),
+            TextureFormat::Bc1 => Ok(Format::Bc1RgbSrgbBlock),
+            TextureFormat::Bc3 => Ok(Format::Bc3SrgbBlock),
+            TextureFormat::Bc4 => Ok(Format::Bc4UnormBlock),
+            TextureFormat::Bc5 => Ok(Format::Bc5UnormBlock),
+            TextureFormat::Bc6H => Ok(Format::Bc6HSfloatBlock),
+            TextureFormat::Bc7 => Ok(Format::Bc7SrgbBlock),
+            _ => Err(self),
+        }
+    }
 }
 
 #[derive(Clone)]

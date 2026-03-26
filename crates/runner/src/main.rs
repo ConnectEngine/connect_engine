@@ -11,8 +11,9 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
-#[global_allocator]
-static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
+// FIXME: Temporarly disabled usage of `snmalloc`, usage causes ACCESS VIOLATION ON ENGINE SHUTDOWN.
+/* #[global_allocator]
+static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc ;*/
 
 #[derive(Default)]
 struct Application {

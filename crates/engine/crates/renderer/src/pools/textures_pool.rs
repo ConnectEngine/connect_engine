@@ -1,8 +1,9 @@
 use bevy_ecs::resource::Resource;
 use bytemuck::{Pod, Zeroable};
 use fast_image_resize::{PixelType, images::Image};
+use image::EncodableLayout;
 use ktx2_rw::{BasisCompressionParams, Ktx2Texture};
-use shared::{TextureKey, TextureMetadata};
+use shared::{TextureFormat, TextureKey, TextureMetadata};
 use slotmap::{Key, SlotMap};
 use vma::{Alloc, Allocation, AllocationCreateInfo, Allocator, MemoryUsage};
 use vulkanite::vk::{
@@ -83,7 +84,8 @@ impl TexturesPool {
             width: extent.width,
             height: extent.height,
             mip_levels_count,
-            texture_format: format as u32,
+            texture_format: TextureFormat::try_from(format).unwrap(),
+            ..Default::default()
         };
 
         let mut ktx_texture = None;
@@ -174,10 +176,13 @@ impl TexturesPool {
                 texture_data.extend_from_slice(texture_data_ref);
             }
 
+            let texture_metadata_raw =
+                rkyv::to_bytes::<rkyv::rancor::Error>(&texture_metadata).unwrap();
+            // FIXME: Temp, later will be removed.
             texture
                 .set_metadata(
                     stringify!(TextureMetadata),
-                    bytemuck::bytes_of(&texture_metadata),
+                    &texture_metadata_raw.as_bytes(),
                 )
                 .unwrap();
 
@@ -233,6 +238,8 @@ impl TexturesPool {
             .create_image_view(&image_view_create_info)
             .unwrap();
 
+        let texture_format = TextureFormat::try_from(format).unwrap();
+
         let allocated_image = AllocatedImage {
             image,
             image_view,
@@ -245,7 +252,8 @@ impl TexturesPool {
                 width: extent.width,
                 height: extent.height,
                 mip_levels_count,
-                texture_format: format as u32,
+                texture_format,
+                ..Default::default()
             },
         };
 

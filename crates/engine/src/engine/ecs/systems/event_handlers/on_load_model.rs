@@ -2,7 +2,8 @@ use asset_importer::{Matrix4x4, node::Node};
 use image::{EncodableLayout, ImageReader};
 use ktx2_rw::Ktx2Texture;
 use nameof::name_of;
-use shared::{Meshlet, TextureMetadata, Vertex};
+use rkyv::access;
+use shared::{ArchivedTextureMetadata, Meshlet, TextureMetadata, Vertex};
 use std::{collections::HashMap, ffi::c_void, io::Cursor, str::FromStr};
 use vulkanite::vk::{
     BufferCopy, BufferUsageFlags, DeviceAddress, Extent3D, Format, ImageUsageFlags,
@@ -581,7 +582,15 @@ fn try_to_load_cached_texture(
         let texture = Ktx2Texture::from_file(&path).unwrap();
         let texture_metadata_raw: Vec<u8> =
             texture.get_metadata(stringify!(TextureMetadata)).unwrap();
-        let texture_metadata = *bytemuck::from_bytes::<TextureMetadata>(&texture_metadata_raw);
+        println!(
+            "Path: {} | De Texture Metadata Length: {}",
+            path.display(),
+            texture_metadata_raw.len()
+        );
+
+        let texture_metadata =
+            rkyv::from_bytes::<TextureMetadata, rkyv::rancor::Error>(&texture_metadata_raw)
+                .unwrap();
 
         for mip_level_index in 0..texture_metadata.mip_levels_count {
             texture_data.extend_from_slice(texture.get_image_data(mip_level_index, 0, 0).unwrap());

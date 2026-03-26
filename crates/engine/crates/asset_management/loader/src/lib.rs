@@ -393,9 +393,15 @@ impl Loader {
         let texture_metadata_raw = ktx_texture
             .get_metadata(stringify!(TextureMetadata))
             .unwrap();
-        let texture_metadata = bytemuck::from_bytes::<TextureMetadata>(&texture_metadata_raw);
 
-        self.upload_texture(textures_pool, texture_metadata, &serialized_texture_map);
+        let archived_texture_metadata =
+            rkyv::access::<ArchivedTextureMetadata, rkyv::rancor::Error>(&texture_metadata_raw)
+                .unwrap();
+        let texture_metadata =
+            rkyv::deserialize::<TextureMetadata, rkyv::rancor::Error>(archived_texture_metadata)
+                .unwrap();
+
+        self.upload_texture(textures_pool, &texture_metadata, &serialized_texture_map);
     }
 
     // TODO: Finish implementation of texture uploading.
@@ -406,7 +412,7 @@ impl Loader {
         data: &[u8],
     ) {
         let texture_reference = textures_pool.upload_texture(
-            textutre_metadata.get_format(),
+            textutre_metadata.texture_format.try_into().unwrap(),
             vulkanite::vk::Extent3D {
                 width: textutre_metadata.width,
                 height: textutre_metadata.height,

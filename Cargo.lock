@@ -1154,6 +1154,7 @@ dependencies = [
  "raw-window-handle",
  "rayon",
  "renderer",
+ "rkyv",
  "shared",
  "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
  "vk-mem",
