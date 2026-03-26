@@ -405,7 +405,7 @@ impl Loader {
         textutre_metadata: &TextureMetadata,
         data: &[u8],
     ) {
-        textures_pool.upload_texture(
+        let texture_reference = textures_pool.upload_texture(
             textutre_metadata.get_format(),
             vulkanite::vk::Extent3D {
                 width: textutre_metadata.width,
