@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Cprefer-dynamic", "-Ctarget-feature=+avx2,+fma"]
+rustflags = ["-Cprefer-dynamic", "-Ctarget-cpu=x86-64-v3"]
