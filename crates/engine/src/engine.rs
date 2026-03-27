@@ -1,38 +1,34 @@
 mod ecs;
 mod events;
-mod general;
 mod setup;
 mod utils;
 
-use asset_database::AssetDatabase;
+use connect_asset_database::AssetDatabase;
+use connect_renderer::*;
 use ecs::*;
 
-use ::renderer::{BuffersPool, SamplersPool, TexturesPool};
 use bevy_ecs::{
     entity_disabling::Disabled,
     schedule::{IntoScheduleConfigs, ScheduleLabel, Schedules},
     world::World,
 };
-use importer::Importer;
-use information::Information;
-use loader::Loader;
-use math::Random;
+use connect_importer::Importer;
+use connect_information::*;
+use connect_loader::Loader;
+use connect_math::Random;
 use winit::{event::ElementState, keyboard::KeyCode, window::Window};
 
 use crate::{
     GamePlugin,
-    engine::{
-        ecs::{
-            general::{
-                check_audio_state, physics_tick, propogate_disabled_to_new_children, update_time,
-            },
-            setup::{
-                prepare_default_samplers::prepare_default_samplers_system,
-                prepare_default_textures::prepare_default_textures_system,
-                prepare_shaders::prepare_shaders_system,
-            },
+    engine::ecs::{
+        general::{
+            check_audio_state, physics_tick, propogate_disabled_to_new_children, update_time,
         },
-        general::renderer::DescriptorSetHandle,
+        setup::{
+            prepare_default_samplers::prepare_default_samplers_system,
+            prepare_default_textures::prepare_default_textures_system,
+            prepare_shaders::prepare_shaders_system,
+        },
     },
 };
 
@@ -40,11 +36,11 @@ pub use audio::*;
 pub use components::camera::{Camera, ClippingPlanes};
 pub use components::local_transform::LocalTransform;
 pub use components::time::Time;
+pub use connect_math;
 pub use events::LoadModelEvent;
-pub use math;
+pub use input::*;
 pub use physics::{Collider, RigidBody};
 pub use queries::transform::*;
-pub use resources::Input;
 pub use system_params::physics::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ScheduleLabel, Debug)]
@@ -85,7 +81,7 @@ impl Engine {
 
         Self::prepare_renderer_resources(&mut world);
 
-        let frame_context = FrameContext::default();
+        let frame_context = FrameContextResource::default();
         world.insert_resource(frame_context);
 
         world.init_resource::<Schedules>();
@@ -99,11 +95,11 @@ impl Engine {
         let scheduler_engine_startup = schedulers.entry(SchedulerEngineStartup);
         scheduler_engine_startup.add_systems(
             (
-                importer::collect_assets_to_serialize_system,
-                importer::resolve_assets_entries_system,
-                importer::check_if_asset_is_serialized_system,
-                importer::serialize_unserialized_assets_system,
-                loader::load_assets_system,
+                connect_importer::collect_assets_to_serialize_system,
+                connect_importer::resolve_assets_entries_system,
+                connect_importer::check_if_asset_is_serialized_system,
+                connect_importer::serialize_unserialized_assets_system,
+                connect_loader::load_assets_system,
             )
                 .chain(),
         );
@@ -213,9 +209,15 @@ impl Drop for Engine {
             .world
             .remove_resource::<VulkanContextResource>()
             .unwrap();
-        let render_context_resource = self.world.remove_resource::<RendererContext>().unwrap();
+        let render_context_resource = self
+            .world
+            .remove_resource::<RendererContextResource>()
+            .unwrap();
         let mut buffers_pool = self.world.remove_resource::<BuffersPool>().unwrap();
-        let mut textures_pool = self.world.remove_resource::<TexturesPool>().unwrap();
+        let mut textures_pool = self
+            .world
+            .remove_resource::<TexturesPoolResource>()
+            .unwrap();
         let mut samplers_pool = self.world.remove_resource::<SamplersPool>().unwrap();
         let renderer_resources = self.world.remove_resource::<RendererResources>().unwrap();
         let descriptor_set_handle = self.world.remove_resource::<DescriptorSetHandle>().unwrap();

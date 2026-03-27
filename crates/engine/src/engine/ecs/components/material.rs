@@ -1,4 +1,4 @@
-use renderer::MaterialState;
+use connect_renderer::MaterialState;
 use vulkanite::vk::DeviceAddress;
 
 pub struct Material {

@@ -1,15 +1,16 @@
 use bevy_ecs::world::World;
-use renderer::CommandGroup;
 use vulkanite::vk::{rs::*, *};
 use winit::window::Window;
 
-use crate::engine::{
-    Engine,
-    resources::{FrameData, RendererContext, UploadContext, VulkanContextResource},
-};
+use crate::engine::Engine;
+
+use connect_renderer::*;
 
 impl Engine {
-    pub(crate) fn create_renderer_context(window: &dyn Window, world: &World) -> RendererContext {
+    pub(crate) fn create_renderer_context(
+        window: &dyn Window,
+        world: &World,
+    ) -> RendererContextResource {
         let vulkan_context_resource = world.get_resource_ref::<VulkanContextResource>().unwrap();
         let device = vulkan_context_resource.device;
         let swapchain = &vulkan_context_resource.swapchain;
@@ -107,7 +108,7 @@ impl Engine {
             },
         };
 
-        RendererContext {
+        RendererContextResource {
             images,
             image_views,
             frame_overlap,

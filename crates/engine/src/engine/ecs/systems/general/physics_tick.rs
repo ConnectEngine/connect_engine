@@ -3,7 +3,7 @@ use bevy_ecs::{
     query::{Changed, With},
     system::{Query, ResMut},
 };
-use math::{Mat4, Quat, Vec3};
+use connect_math::{Mat4, Quat, Vec3};
 
 use crate::engine::{
     LocalTransform, Physics, RigidBody,

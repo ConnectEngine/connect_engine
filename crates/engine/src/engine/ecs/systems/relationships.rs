@@ -7,7 +7,7 @@ use bevy_ecs::{
     system::{Local, Query},
     world::Ref,
 };
-use math::Mat4;
+use connect_math::*;
 
 use crate::engine::components::local_transform::{GlobalTransform, LocalTransform};
 

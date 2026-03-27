@@ -1,9 +1,8 @@
 use asset_importer::{Matrix4x4, node::Node};
+use connect_shared::*;
 use image::{EncodableLayout, ImageReader};
 use ktx2_rw::Ktx2Texture;
 use nameof::name_of;
-use rkyv::access;
-use shared::{ArchivedTextureMetadata, Meshlet, TextureMetadata, Vertex};
 use std::{collections::HashMap, ffi::c_void, io::Cursor, str::FromStr};
 use vulkanite::vk::{
     BufferCopy, BufferUsageFlags, DeviceAddress, Extent3D, Format, ImageUsageFlags,
@@ -13,7 +12,7 @@ use bevy_ecs::{
     observer::On,
     system::{Commands, Res, ResMut},
 };
-use math::{Mat4, Vec2, Vec3, Vec4};
+use connect_math::{Mat4, Vec2, Vec3, Vec4};
 use meshopt::{
     VertexDataAdapter, build_meshlets, optimize_vertex_cache_in_place, optimize_vertex_fetch,
     optimize_vertex_fetch_remap, remap_index_buffer, remap_vertex_buffer, typed_to_bytes,
@@ -22,11 +21,10 @@ use meshopt::{
 use crate::engine::{
     components::local_transform::LocalTransform,
     events::{LoadModelEvent, SpawnEvent, SpawnEventRecord},
-    general::renderer::{DescriptorKind, DescriptorSampledImage, DescriptorSetHandle},
-    resources::{MeshObject, RendererContext, RendererResources, VulkanContextResource},
+    resources::MeshObject,
 };
 
-use renderer::*;
+use connect_renderer::*;
 
 struct NodeData {
     pub name: String,
@@ -56,7 +54,7 @@ impl NodeData {
     }
 
     pub fn get_matrix(transformation: Matrix4x4) -> Mat4 {
-        math::Mat4 {
+        connect_math::Mat4 {
             x_axis: Vec4::new(
                 transformation.x_axis.x,
                 transformation.x_axis.y,
@@ -90,11 +88,11 @@ pub fn on_load_model_system(
     mut commands: Commands,
     vulkan_context: Res<VulkanContextResource>,
     mut materials_pool: ResMut<MaterialsPool>,
-    renderer_context_resource: Res<RendererContext>,
+    renderer_context_resource: Res<RendererContextResource>,
     renderer_resources: ResMut<RendererResources>,
     mut descriptor_set_handle: ResMut<DescriptorSetHandle>,
     mut buffers_pool: ResMut<BuffersPool>,
-    mut textures_pool: ResMut<TexturesPool>,
+    mut textures_pool: ResMut<TexturesPoolResource>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
     let model_loader = &renderer_resources.model_loader;
@@ -497,8 +495,8 @@ pub fn create_and_copy_to_buffer(
 
 fn try_upload_texture(
     vulkan_context: &VulkanContextResource,
-    renderer_context: &RendererContext,
-    textures_pool: &mut TexturesPool,
+    renderer_context: &RendererContextResource,
+    textures_pool: &mut TexturesPoolResource,
     buffers_pool: &mut BuffersPool,
     descriptor_set_handle: &mut DescriptorSetHandle,
     scene: &asset_importer::Scene,
@@ -563,7 +561,7 @@ fn try_upload_texture(
 }
 
 fn try_to_load_cached_texture(
-    textures_pool: &mut TexturesPool,
+    textures_pool: &mut TexturesPoolResource,
     model_name: &str,
     texture: asset_importer::Texture,
     texture_name: &str,

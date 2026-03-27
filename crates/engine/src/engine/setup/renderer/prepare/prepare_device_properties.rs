@@ -1,10 +1,9 @@
 use bevy_ecs::world::World;
 use vulkanite::vk::*;
 
-use crate::engine::{
-    Engine,
-    resources::{DevicePropertiesResource, VulkanContextResource},
-};
+use crate::engine::Engine;
+
+use connect_renderer::*;
 
 impl Engine {
     pub(crate) fn create_device_properties(world: &World) -> DevicePropertiesResource {

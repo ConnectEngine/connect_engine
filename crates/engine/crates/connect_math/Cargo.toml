@@ -1,0 +1,15 @@
+[package]
+name = "connect_math"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bevy_ecs = { workspace = true }
+
+rand = "0.10.0"
+rand_xoshiro = "0.8.0"
+general = { package = "glam", version = "0.32.0", features = [
+    "fast-math",
+    "bytemuck",
+] }

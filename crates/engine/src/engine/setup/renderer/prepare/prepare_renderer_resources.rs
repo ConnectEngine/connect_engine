@@ -1,18 +1,14 @@
 use bevy_ecs::world::World;
-use renderer::*;
+use connect_renderer::*;
+use connect_shared::ModelLoader;
 use vulkanite::vk::{rs::Device, *};
 
-use crate::engine::{
-    Engine,
-    ecs::audio::Audio,
-    general::renderer::{DescriptorSetBuilder, DescriptorSetHandle},
-    resources::{model_loader::ModelLoader, *},
-};
+use crate::engine::{Engine, ecs::audio::Audio};
 
 impl Engine {
     pub fn prepare_renderer_resources(world: &mut World) {
         let vulkan_context = world.get_resource_ref::<VulkanContextResource>().unwrap();
-        let render_context = world.get_resource_ref::<RendererContext>().unwrap();
+        let render_context = world.get_resource_ref::<RendererContextResource>().unwrap();
         let device_properties_resource = world
             .get_resource_ref::<DevicePropertiesResource>()
             .unwrap();
@@ -45,7 +41,7 @@ impl Engine {
             upload_command_group,
             vulkan_context.transfer_queue,
         );
-        let textures_pool = TexturesPool::new(device, vulkan_context.allocator);
+        let textures_pool = TexturesPoolResource::new(device, vulkan_context.allocator);
         let samplers_pool = SamplersPool::new(device);
         let mesh_buffers_pool = MeshBuffersPool::new(Default::default(), 5_120);
 

@@ -1,7 +1,7 @@
 use bevy_ecs::schedule::Schedule;
 
 pub mod engine;
-pub use engine::math;
+pub use connect_math;
 
 pub trait GamePlugin {
     fn add_systems_init(&self, schedule: &mut Schedule);

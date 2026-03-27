@@ -1,5 +1,5 @@
 use bevy_ecs::query::QueryData;
-use math::{EulerRot, Mat4, Quat, Vec3};
+use connect_math::{EulerRot, Mat4, Quat, Vec3};
 
 use crate::engine::{LocalTransform, ecs::components::local_transform::GlobalTransform};
 

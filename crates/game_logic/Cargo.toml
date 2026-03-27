@@ -8,7 +8,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 # FIXME
-renderer = { workspace = true }
+connect_renderer = { workspace = true }
 engine = { workspace = true }
 bevy_ecs = { workspace = true }
 winit = { workspace = true }

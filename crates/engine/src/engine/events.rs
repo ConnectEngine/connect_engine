@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use bevy_ecs::{entity::Entity, event::Event};
-use renderer::{MaterialReference, MeshBufferReference};
+use connect_renderer::*;
 
 use crate::engine::components::local_transform::LocalTransform;
 

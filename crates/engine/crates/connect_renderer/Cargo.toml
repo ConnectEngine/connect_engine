@@ -1,0 +1,29 @@
+[package]
+name = "connect_renderer"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+connect_math = { workspace = true }
+connect_asset_database = { workspace = true }
+connect_information = { workspace = true }
+connect_shared = { workspace = true }
+
+bytemuck = { workspace = true }
+num_cpus = { workspace = true }
+toml = { workspace = true }
+rkyv = { workspace = true }
+serde = { workspace = true }
+walkdir = { workspace = true }
+bevy_ecs = { workspace = true }
+asset-importer = { workspace = true }
+image = { workspace = true }
+ktx2-rw = { workspace = true }
+fast_image_resize = { workspace = true }
+meshopt = { workspace = true }
+padding-struct = { workspace = true }
+vulkanite = { workspace = true }
+vma = { workspace = true }
+ahash = { workspace = true }
+slotmap = { workspace = true }

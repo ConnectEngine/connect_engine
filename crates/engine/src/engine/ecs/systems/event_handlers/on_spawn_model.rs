@@ -1,6 +1,6 @@
 use bevy_ecs::{hierarchy::ChildOf, name::Name, observer::On, system::Commands};
-use math::{Quat, Vec3};
-use renderer::Mesh;
+use connect_math::*;
+use connect_renderer::*;
 
 use crate::engine::{
     components::local_transform::{GlobalTransform, LocalTransform},

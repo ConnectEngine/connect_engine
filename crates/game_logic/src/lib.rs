@@ -18,9 +18,9 @@ use engine::{
         Time, Transform,
     },
 };
-use engine::{engine::Audio, math::*};
+use engine::{connect_math::*, engine::Audio};
 // FIXME
-use renderer::Mesh;
+use connect_renderer::Mesh;
 use winit::keyboard::KeyCode;
 
 #[unsafe(no_mangle)]

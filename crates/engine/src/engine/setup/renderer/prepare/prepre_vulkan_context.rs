@@ -17,7 +17,9 @@ use vulkanite::{
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::engine::{Engine, resources::VulkanContextResource};
+use crate::engine::Engine;
+
+use connect_renderer::*;
 
 extern "system" fn debug_callback(
     severity: vk::DebugUtilsMessageSeverityFlagsEXT,

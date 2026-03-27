@@ -4,13 +4,13 @@ members = [
     "crates/engine",
     "crates/game_logic",
     "crates/runner",
-    "crates/engine/crates/math",
-    "crates/engine/crates/asset_management/importer",
-    "crates/engine/crates/asset_management/loader",
-    "crates/engine/crates/asset_management/asset_database",
-    "crates/engine/crates/asset_management/shared",
-    "crates/engine/crates/information",
-    "crates/engine/crates/renderer",
+    "crates/engine/crates/connect_math",
+    "crates/engine/crates/asset_management/connect_importer",
+    "crates/engine/crates/asset_management/connect_loader",
+    "crates/engine/crates/asset_management/connect_asset_database",
+    "crates/engine/crates/asset_management/connect_shared",
+    "crates/engine/crates/connect_information",
+    "crates/engine/crates/connect_renderer",
     # "crates/engine/crates/physics",
 ]
 
@@ -73,13 +73,13 @@ nameof = "1.3.0"
 
 engine = { path = "crates/engine" }
 game_logic = { path = "crates/game_logic" }
-math = { path = "crates/engine/crates/math" }
-importer = { path = "crates/engine/crates/asset_management/importer" }
-loader = { path = "crates/engine/crates/asset_management/loader" }
-shared = { path = "crates/engine/crates/asset_management/shared" }
-asset_database = { path = "crates/engine/crates/asset_management/asset_database" }
-information = { path = "crates/engine/crates/information" }
-renderer = { path = "crates/engine/crates/renderer" }
+connect_math = { path = "crates/engine/crates/connect_math" }
+connect_importer = { path = "crates/engine/crates/asset_management/connect_importer" }
+connect_loader = { path = "crates/engine/crates/asset_management/connect_loader" }
+connect_shared = { path = "crates/engine/crates/asset_management/connect_shared" }
+connect_asset_database = { path = "crates/engine/crates/asset_management/connect_asset_database" }
+connect_information = { path = "crates/engine/crates/connect_information" }
+connect_renderer = { path = "crates/engine/crates/connect_renderer" }
 # physics = { path = "crates/engine/crates/physics" }
 
 [profile.dev]

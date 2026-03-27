@@ -8,16 +8,17 @@ publish = false
 crate-type = ["dylib"]
 
 [dependencies]
+connect_renderer = { workspace = true }
+connect_importer = { workspace = true }
+connect_asset_database = { workspace = true }
+connect_loader = { workspace = true }
+connect_information = { workspace = true }
+connect_shared = { workspace = true }
+connect_math = { workspace = true }
+
 rayon = { workspace = true }
 bevy_ecs = { workspace = true }
 winit = { workspace = true }
-math = { workspace = true }
-renderer = { workspace = true }
-importer = { workspace = true }
-asset_database = { workspace = true }
-loader = { workspace = true }
-information = { workspace = true }
-shared = { workspace = true }
 rapier3d = { workspace = true }
 asset-importer = { workspace = true }
 image = { workspace = true }

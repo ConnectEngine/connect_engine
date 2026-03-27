@@ -197,30 +197,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "asset_database"
-version = "0.1.0"
-dependencies = [
- "asset-importer",
- "bevy_ecs",
- "bytemuck",
- "fast_image_resize",
- "image",
- "ktx2-rw",
- "math",
- "meshopt",
- "num_cpus",
- "padding-struct",
- "rkyv",
- "serde",
- "shared",
- "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
- "toml",
- "uuid",
- "uuid-simd",
- "walkdir",
-]
-
-[[package]]
 name = "async-channel"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -774,6 +750,151 @@ dependencies = [
 ]
 
 [[package]]
+name = "connect_asset_database"
+version = "0.1.0"
+dependencies = [
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_math",
+ "connect_shared",
+ "fast_image_resize",
+ "image",
+ "ktx2-rw",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
+ "toml",
+ "uuid",
+ "uuid-simd",
+ "walkdir",
+]
+
+[[package]]
+name = "connect_importer"
+version = "0.1.0"
+dependencies = [
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_information",
+ "connect_math",
+ "connect_renderer",
+ "connect_shared",
+ "fast_image_resize",
+ "image",
+ "ktx2-rw",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "toml",
+ "uuid",
+ "uuid-simd",
+ "walkdir",
+]
+
+[[package]]
+name = "connect_information"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+]
+
+[[package]]
+name = "connect_loader"
+version = "0.1.0"
+dependencies = [
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_asset_database",
+ "connect_information",
+ "connect_math",
+ "connect_renderer",
+ "connect_shared",
+ "fast_image_resize",
+ "image",
+ "ktx2-rw",
+ "memmap2",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "toml",
+ "uuid",
+ "uuid-simd",
+ "vulkanite",
+ "walkdir",
+]
+
+[[package]]
+name = "connect_math"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "glam 0.32.1",
+ "rand 0.10.0",
+ "rand_xoshiro",
+]
+
+[[package]]
+name = "connect_renderer"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_asset_database",
+ "connect_information",
+ "connect_math",
+ "connect_shared",
+ "fast_image_resize",
+ "image",
+ "ktx2-rw",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
+ "toml",
+ "vk-mem",
+ "vulkanite",
+ "walkdir",
+]
+
+[[package]]
+name = "connect_shared"
+version = "0.1.0"
+dependencies = [
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_math",
+ "fast_image_resize",
+ "image",
+ "ktx2-rw",
+ "meshopt",
+ "num_cpus",
+ "padding-struct",
+ "rkyv",
+ "serde",
+ "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
+ "toml",
+ "uuid",
+ "uuid-simd",
+ "vulkanite",
+ "walkdir",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1134,18 +1255,20 @@ version = "0.1.0"
 dependencies = [
  "ahash",
  "asset-importer",
- "asset_database",
  "bevy_ecs",
  "bytemuck",
+ "connect_asset_database",
+ "connect_importer",
+ "connect_information",
+ "connect_loader",
+ "connect_math",
+ "connect_renderer",
+ "connect_shared",
  "dolly",
  "fast_image_resize",
  "image",
- "importer",
- "information",
  "kira",
  "ktx2-rw",
- "loader",
- "math",
  "meshopt",
  "nameof",
  "num_cpus",
@@ -1153,9 +1276,7 @@ dependencies = [
  "rapier3d",
  "raw-window-handle",
  "rayon",
- "renderer",
  "rkyv",
- "shared",
  "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
  "vk-mem",
  "vulkanite",
@@ -1433,8 +1554,8 @@ name = "game_logic"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "connect_renderer",
  "engine",
- "renderer",
  "winit",
 ]
 
@@ -1972,30 +2093,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7c5cedc30da3a610cac6b4ba17597bdf7152cf974e8aab3afb3d54455e371c8"
 
 [[package]]
-name = "importer"
-version = "0.1.0"
-dependencies = [
- "asset-importer",
- "bevy_ecs",
- "bytemuck",
- "fast_image_resize",
- "image",
- "information",
- "ktx2-rw",
- "math",
- "meshopt",
- "num_cpus",
- "padding-struct",
- "rkyv",
- "serde",
- "shared",
- "toml",
- "uuid",
- "uuid-simd",
- "walkdir",
-]
-
-[[package]]
 name = "indexmap"
 version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2005,13 +2102,6 @@ dependencies = [
  "hashbrown 0.16.1",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "information"
-version = "0.1.0"
-dependencies = [
- "bevy_ecs",
 ]
 
 [[package]]
@@ -2306,34 +2396,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
-name = "loader"
-version = "0.1.0"
-dependencies = [
- "asset-importer",
- "asset_database",
- "bevy_ecs",
- "bytemuck",
- "fast_image_resize",
- "image",
- "information",
- "ktx2-rw",
- "math",
- "memmap2",
- "meshopt",
- "num_cpus",
- "padding-struct",
- "renderer",
- "rkyv",
- "serde",
- "shared",
- "toml",
- "uuid",
- "uuid-simd",
- "vulkanite",
- "walkdir",
-]
-
-[[package]]
 name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2365,16 +2427,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a1b95cd5421ec55b445b5ae102f5ea0e768de1f82bd3001e11f426c269c3aea"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "math"
-version = "0.1.0"
-dependencies = [
- "bevy_ecs",
- "glam 0.32.1",
- "rand 0.10.0",
- "rand_xoshiro",
 ]
 
 [[package]]
@@ -3446,33 +3498,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "renderer"
-version = "0.1.0"
-dependencies = [
- "ahash",
- "asset-importer",
- "asset_database",
- "bevy_ecs",
- "bytemuck",
- "fast_image_resize",
- "image",
- "information",
- "ktx2-rw",
- "math",
- "meshopt",
- "num_cpus",
- "padding-struct",
- "rkyv",
- "serde",
- "shared",
- "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
- "toml",
- "vk-mem",
- "vulkanite",
- "walkdir",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3828,30 +3853,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "digest",
-]
-
-[[package]]
-name = "shared"
-version = "0.1.0"
-dependencies = [
- "asset-importer",
- "bevy_ecs",
- "bytemuck",
- "fast_image_resize",
- "image",
- "ktx2-rw",
- "math",
- "meshopt",
- "num_cpus",
- "padding-struct",
- "rkyv",
- "serde",
- "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
- "toml",
- "uuid",
- "uuid-simd",
- "vulkanite",
- "walkdir",
 ]
 
 [[package]]

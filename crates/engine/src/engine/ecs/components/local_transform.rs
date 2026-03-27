@@ -1,5 +1,5 @@
 use bevy_ecs::{component::Component, name::Name};
-use math::{EulerRot, Mat4, Quat, Vec3};
+use connect_math::*;
 
 #[derive(Clone, Copy, Component, Debug)]
 #[require(GlobalTransform, Name)]
