@@ -22,7 +22,7 @@ pub struct SerializedMesh {
 
 #[repr(C)]
 #[padding_struct]
-#[derive(Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct TextureMetadata {
     pub texture_format: TextureFormat,
     pub width: u32,

@@ -366,7 +366,6 @@ impl Loader {
         >(&serialized_material_map)
         .unwrap();
 
-        // FIXME: Some issue, when creates image on Vulkan side, due to (probably) unspecified image creation limits.
         archived_serialized_material
             .texture_inputs
             .iter()
@@ -390,7 +389,7 @@ impl Loader {
         let serialized_texture_file = std::fs::File::open(&found_texture.path).unwrap();
         let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
 
-        let mut ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
+        let ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
         let texture_metadata_raw = ktx_texture
             .get_metadata(stringify!(TextureMetadata))
             .unwrap();
@@ -412,14 +411,15 @@ impl Loader {
         textutre_metadata: &TextureMetadata,
         data: &[u8],
     ) {
+        let texture_format: Format = textutre_metadata.texture_format.try_into().unwrap();
         let texture_reference = textures_pool.upload_texture(
-            textutre_metadata.texture_format.try_into().unwrap(),
+            texture_format,
             vulkanite::vk::Extent3D {
                 width: textutre_metadata.width,
                 height: textutre_metadata.height,
                 depth: 1,
             },
-            ImageUsageFlags::ColorAttachment,
+            ImageUsageFlags::Sampled | ImageUsageFlags::TransferDst,
             textutre_metadata.mip_levels_count,
             ImageAspectFlags::Color,
             true,
