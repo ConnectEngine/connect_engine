@@ -1,8 +1,6 @@
 use bevy_ecs::system::{Res, ResMut};
 use vulkanite::vk::*;
 
-use crate::engine::resources::FrameContextResource;
-
 use connect_renderer::*;
 
 pub fn present_system(

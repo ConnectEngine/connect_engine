@@ -88,54 +88,6 @@ pub struct Vertex {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct MaterialProperties {
-    pub base_color: [f32; 4],
-    pub metallic_value: f32,
-    pub roughness_value: f32,
-}
-
-impl MaterialProperties {
-    pub fn new(base_color: Vec4, metallic_value: f32, roughness_value: f32) -> Self {
-        Self {
-            base_color: base_color.to_array(),
-            metallic_value,
-            roughness_value,
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct MaterialTextures {
-    pub albedo_texture_index: u32,
-    pub metallic_texture_index: u32,
-    pub roughness_texture_index: u32,
-}
-
-impl MaterialTextures {
-    pub fn new(
-        albedo_texture_index: u32,
-        metallic_texture_index: u32,
-        roughness_texture_index: u32,
-    ) -> Self {
-        Self {
-            albedo_texture_index,
-            metallic_texture_index,
-            roughness_texture_index,
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct MaterialData {
-    pub material_properties: MaterialProperties,
-    pub material_textures: MaterialTextures,
-    pub sampler_index: u32,
-}
-
-#[repr(C)]
 #[padding_struct]
 #[derive(Default, Clone, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct TextureInput {

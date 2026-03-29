@@ -2,8 +2,6 @@ use bevy_ecs::system::{Res, ResMut};
 use connect_renderer::*;
 use vulkanite::vk::*;
 
-use crate::engine::resources::{FrameContextResource, RendererResources};
-
 pub fn prepare_frame_system(
     vulkan_ctx: Res<VulkanContextResource>,
     render_ctx: Res<RendererContextResource>,

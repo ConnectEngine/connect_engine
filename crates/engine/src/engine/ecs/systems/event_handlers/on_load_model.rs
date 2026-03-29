@@ -21,7 +21,6 @@ use meshopt::{
 use crate::engine::{
     components::local_transform::LocalTransform,
     events::{LoadModelEvent, SpawnEvent, SpawnEventRecord},
-    resources::MeshObject,
 };
 
 use connect_renderer::*;

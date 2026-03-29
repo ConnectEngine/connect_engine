@@ -1,6 +1,6 @@
 use bevy_ecs::system::{Query, Res, ResMut};
 
-use crate::engine::{components::local_transform::GlobalTransform, resources::RendererResources};
+use crate::engine::components::local_transform::GlobalTransform;
 
 use connect_renderer::*;
 

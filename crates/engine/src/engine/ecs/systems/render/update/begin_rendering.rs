@@ -7,8 +7,6 @@ use vulkanite::{
     },
 };
 
-use crate::engine::resources::{FrameContextResource, GraphicsPushConstant, RendererResources};
-
 use connect_renderer::*;
 
 pub fn begin_rendering_system(

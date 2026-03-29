@@ -2,11 +2,7 @@ use bevy_ecs::system::{Query, Res, ResMut};
 use bytemuck::Pod;
 use connect_math::*;
 
-use crate::engine::{
-    LocalTransform,
-    components::camera::Camera,
-    resources::{DirectionalLight, LightProperties, RendererResources, SceneData, SwappableBuffer},
-};
+use crate::engine::{LocalTransform, components::camera::Camera};
 
 use connect_renderer::*;
 
