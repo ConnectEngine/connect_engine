@@ -23,7 +23,7 @@ pub struct AllocatedImage {
     pub texture_metadata: TextureMetadata,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct TextureReference {
     pub key: TextureKey,
     pub texture_metadata: TextureMetadata,

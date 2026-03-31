@@ -109,7 +109,7 @@ impl VariableOffsets {
 
 #[derive(Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct MaterialReference {
-    key: MaterialKey,
+    pub key: MaterialKey,
 }
 
 impl MaterialReference {

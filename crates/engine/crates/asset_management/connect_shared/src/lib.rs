@@ -25,7 +25,18 @@ pub struct SerializedMesh {
 
 #[repr(C)]
 #[padding_struct]
-#[derive(Debug, Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
 pub struct TextureMetadata {
     pub texture_format: TextureFormat,
     pub width: u32,
@@ -149,7 +160,18 @@ pub struct ModelEntry {
 }
 
 #[repr(u32)]
-#[derive(Debug, Default, Clone, Copy, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
 pub enum TextureFormat {
     #[default]
     RGBA8Srgb,

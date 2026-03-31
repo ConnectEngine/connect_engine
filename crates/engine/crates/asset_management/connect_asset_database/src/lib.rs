@@ -1,21 +1,24 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{self, PathBuf},
+};
 
 use bevy_ecs::resource::Resource;
-use connect_renderer::TextureReference;
-use connect_shared::TextureKey;
+use connect_renderer::{MaterialReference, TextureReference};
+use connect_shared::{MaterialKey, TextureKey};
 use slotmap::{Key, SlotMap};
 use uuid::Uuid;
 
 type AssetPath = String;
 
-#[derive(Default)]
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct Material<TKey: Key> {
     pub key: TKey,
     pub path: PathBuf,
-    pub textures: Vec<TextureKey>,
+    pub textures: Vec<TextureReference>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct Texture<TKey: Key> {
     pub key: TKey,
     pub path: PathBuf,
@@ -30,8 +33,8 @@ pub struct AssetCategory<TKey: Key> {
 #[derive(Resource)]
 pub struct AssetDatabase {
     pub models: AssetCategory<TextureKey>,
-    pub materials: AssetCategory<TextureKey>,
-    pub textures: Vec<Texture<TextureKey>>,
+    pub materials: Vec<Material<MaterialKey>>,
+    pub textures: HashSet<Texture<TextureKey>>,
 }
 
 impl AssetDatabase {
@@ -43,10 +46,24 @@ impl AssetDatabase {
         }
     }
 
+    pub fn track_material(
+        &mut self,
+        material_reference: MaterialReference,
+        mut path_buf: PathBuf,
+        textures: Vec<TextureReference>,
+    ) {
+        path_buf = Self::trim_extensions_from_path(path_buf);
+
+        println!("Tracking material: {}", path_buf.display());
+        let material = Material {
+            key: material_reference.key,
+            path: path_buf,
+            textures,
+        };
+    }
+
     pub fn track_texture(&mut self, texture_reference: TextureReference, mut path_buf: PathBuf) {
-        while path_buf.extension().is_some() {
-            path_buf.set_extension("");
-        }
+        path_buf = Self::trim_extensions_from_path(path_buf);
 
         println!("Tracking texture: {}", path_buf.display());
         let texture = Texture {
@@ -54,6 +71,14 @@ impl AssetDatabase {
             path: path_buf,
         };
 
-        self.textures.push(texture);
+        self.textures.insert(texture);
+    }
+
+    fn trim_extensions_from_path(mut path_buf: PathBuf) -> PathBuf {
+        while path_buf.extension().is_some() {
+            path_buf.set_extension("");
+        }
+
+        path_buf
     }
 }

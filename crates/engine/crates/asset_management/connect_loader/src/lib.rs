@@ -390,13 +390,14 @@ impl Loader {
         >(&serialized_material_map)
         .unwrap();
 
+        let mut loaded_textures = Vec::new();
         archived_serialized_material
             .texture_inputs
             .iter()
             .for_each(|texture_input| {
                 let target_texture_uuid = texture_input.uuid;
 
-                self.load_texture(
+                let texture_reference = self.load_texture(
                     asset_database,
                     vulkan_context_resource,
                     renderer_context_resource,
@@ -405,7 +406,11 @@ impl Loader {
                     buffers_pool,
                     target_texture_uuid,
                 );
+
+                loaded_textures.push(texture_reference);
             });
+
+        // TODO: Upload material.
     }
 
     fn load_texture(
@@ -417,7 +422,7 @@ impl Loader {
         textures_pool: &mut TexturesPoolResource,
         buffers_pool: &mut BuffersPool,
         texture_uuid: Uuid,
-    ) {
+    ) -> TextureReference {
         let found_texture = self
             .textures_to_load
             .iter()
@@ -452,7 +457,10 @@ impl Loader {
             &serialized_texture_map,
         );
 
+        // TODO: Track textures based on material, if loaded textures as not standalone.
         assset_database.track_texture(texture_reference, found_texture.original_path_buf.clone());
+
+        texture_reference
     }
 
     pub fn upload_texture(
