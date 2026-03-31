@@ -35,7 +35,8 @@ enum AssetType {
 struct AssetToLoad {
     pub uuid: Uuid,
     pub name: String,
-    pub path: PathBuf,
+    pub path_buf: PathBuf,
+    pub original_path_buf: PathBuf,
 }
 
 #[derive(Default, Resource)]
@@ -92,7 +93,8 @@ impl Loader {
                     self.models_to_load.push(AssetToLoad {
                         uuid: model_asset_metadata.uuid,
                         name: model_asset_metadata.name.clone(),
-                        path: Self::resolve_path(
+                        original_path_buf: model_asset_metadata.path_buf,
+                        path_buf: Self::resolve_path(
                             AssetType::Model,
                             &model_asset_metadata.name,
                             model_asset_metadata.uuid,
@@ -104,7 +106,8 @@ impl Loader {
                     self.textures_to_load.push(AssetToLoad {
                         uuid: texture_asset_metadata.uuid,
                         name: texture_asset_metadata.name.clone(),
-                        path: Self::resolve_path(
+                        original_path_buf: texture_asset_metadata.path_buf,
+                        path_buf: Self::resolve_path(
                             AssetType::Texture,
                             &texture_asset_metadata.name,
                             texture_asset_metadata.uuid,
@@ -116,7 +119,8 @@ impl Loader {
                     self.materials_to_load.push(AssetToLoad {
                         uuid: material_asset_metadata.uuid,
                         name: material_asset_metadata.name.clone(),
-                        path: assets_folder_path.join(material_asset_metadata.path_buf),
+                        original_path_buf: material_asset_metadata.path_buf.clone(),
+                        path_buf: assets_folder_path.join(material_asset_metadata.path_buf),
                     });
                 }
             });
@@ -133,7 +137,7 @@ impl Loader {
         mesh_buffers_pool: &mut MeshBuffersPool,
     ) {
         self.models_to_load.iter().for_each(|model_to_load| {
-            let serialized_model_file = std::fs::File::open(&model_to_load.path).unwrap();
+            let serialized_model_file = std::fs::File::open(&model_to_load.path_buf).unwrap();
 
             let serialized_model_map = unsafe { Mmap::map(&serialized_model_file).unwrap() };
 
@@ -194,6 +198,7 @@ impl Loader {
 
                             // TODO: Handle Material == None
                             self.load_material(
+                                asset_database,
                                 vulkan_context_resource,
                                 renderer_context_resource,
                                 descriptor_set_handle,
@@ -360,6 +365,7 @@ impl Loader {
 
     fn load_material(
         &self,
+        asset_database: &mut AssetDatabase,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
@@ -376,7 +382,7 @@ impl Loader {
                 material_uuid
             ));
 
-        let serialized_material_file = std::fs::File::open(&found_material.path).unwrap();
+        let serialized_material_file = std::fs::File::open(&found_material.path_buf).unwrap();
         let serialized_material_map = unsafe { Mmap::map(&serialized_material_file).unwrap() };
         let archived_serialized_material = rkyv::access::<
             ArchivedSerializedMaterial,
@@ -391,6 +397,7 @@ impl Loader {
                 let target_texture_uuid = texture_input.uuid;
 
                 self.load_texture(
+                    asset_database,
                     vulkan_context_resource,
                     renderer_context_resource,
                     descriptor_set_handle,
@@ -403,6 +410,7 @@ impl Loader {
 
     fn load_texture(
         &self,
+        assset_database: &mut AssetDatabase,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
@@ -419,7 +427,7 @@ impl Loader {
                 texture_uuid
             ));
 
-        let serialized_texture_file = std::fs::File::open(&found_texture.path).unwrap();
+        let serialized_texture_file = std::fs::File::open(&found_texture.path_buf).unwrap();
         let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
 
         let ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
@@ -434,7 +442,7 @@ impl Loader {
             rkyv::deserialize::<TextureMetadata, rkyv::rancor::Error>(archived_texture_metadata)
                 .unwrap();
 
-        self.upload_texture(
+        let texture_reference = self.upload_texture(
             vulkan_context_resource,
             renderer_context_resource,
             descriptor_set_handle,
@@ -443,9 +451,10 @@ impl Loader {
             &texture_metadata,
             &serialized_texture_map,
         );
+
+        assset_database.track_texture(texture_reference, found_texture.original_path_buf.clone());
     }
 
-    // TODO: Finish implementation of texture uploading.
     pub fn upload_texture(
         &self,
         vulkan_context_resource: &VulkanContextResource,
@@ -455,7 +464,7 @@ impl Loader {
         buffers_pool: &mut BuffersPool,
         texture_metadata: &TextureMetadata,
         data: &[u8],
-    ) {
+    ) -> TextureReference {
         let texture_format: Format = texture_metadata.texture_format.try_into().unwrap();
         let texture_reference = textures_pool.upload_texture(
             texture_format,
@@ -496,6 +505,8 @@ impl Loader {
             texture_metadata.height,
             1,
         );
+
+        texture_reference
     }
 
     pub(crate) fn resolve_path(

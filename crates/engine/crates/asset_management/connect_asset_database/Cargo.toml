@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 connect_math = { workspace = true }
 connect_shared = { workspace = true }
+connect_renderer = { workspace = true }
 
 slotmap = { workspace = true }
 bytemuck = { workspace = true }

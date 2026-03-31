@@ -6,7 +6,6 @@ publish = false
 
 [dependencies]
 connect_math = { workspace = true }
-connect_asset_database = { workspace = true }
 connect_information = { workspace = true }
 connect_shared = { workspace = true }
 
