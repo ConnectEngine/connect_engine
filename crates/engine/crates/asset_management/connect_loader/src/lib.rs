@@ -513,6 +513,7 @@ impl Loader {
         let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
 
         let ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
+
         let texture_metadata_raw = ktx_texture
             .get_metadata(stringify!(TextureMetadata))
             .unwrap();
@@ -520,6 +521,13 @@ impl Loader {
         let archived_texture_metadata =
             rkyv::access::<ArchivedTextureMetadata, rkyv::rancor::Error>(&texture_metadata_raw)
                 .unwrap();
+
+        let mut texture_data = Vec::new();
+        for mip_level_index in 0..archived_texture_metadata.mip_levels_count.to_native() {
+            texture_data
+                .extend_from_slice(ktx_texture.get_image_data(mip_level_index, 0, 0).unwrap());
+        }
+
         let texture_metadata =
             rkyv::deserialize::<TextureMetadata, rkyv::rancor::Error>(archived_texture_metadata)
                 .unwrap();
@@ -531,7 +539,7 @@ impl Loader {
             textures_pool,
             buffers_pool,
             &texture_metadata,
-            &serialized_texture_map,
+            &texture_data,
         );
 
         // TODO: Track textures based on material, if loaded textures as not standalone.
