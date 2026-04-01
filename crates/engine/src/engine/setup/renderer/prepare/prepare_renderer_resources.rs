@@ -1,6 +1,5 @@
 use bevy_ecs::world::World;
 use connect_renderer::*;
-use connect_shared::ModelLoader;
 use vulkanite::vk::{rs::Device, *};
 
 use crate::engine::{Engine, ecs::audio::Audio};
@@ -29,7 +28,6 @@ impl Engine {
             task_shader_object: Default::default(),
             mesh_shader_object: Default::default(),
             fragment_shader_object: Default::default(),
-            model_loader: ModelLoader::new(),
             resources_pool,
             is_printed_scene_hierarchy: true,
             materials_data_buffer_reference: Default::default(),

@@ -1,7 +1,3 @@
-pub mod model_loader;
-
-pub use model_loader::*;
-
 use connect_math::*;
 use std::path::PathBuf;
 use vulkanite::vk::Format;

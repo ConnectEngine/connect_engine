@@ -1,7 +1,6 @@
 use bevy_ecs::resource::Resource;
 use bytemuck::{NoUninit, Pod, Zeroable};
 use connect_math::*;
-use connect_shared::ModelLoader;
 use padding_struct::padding_struct;
 use vulkanite::vk::{rs::*, *};
 
@@ -159,7 +158,6 @@ pub struct RendererResources {
     pub task_shader_object: ShaderObject,
     pub mesh_shader_object: ShaderObject,
     pub fragment_shader_object: ShaderObject,
-    pub model_loader: ModelLoader,
     pub resources_pool: ResourcesPool,
     pub is_printed_scene_hierarchy: bool,
 }
