@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
 };
 
-use bevy_ecs::resource::Resource;
+use bevy_ecs::{entity::Entity, resource::Resource};
 use connect_renderer::{MaterialReference, MeshBufferReference, TextureReference};
 use connect_shared::{MaterialKey, MeshBufferKey, TextureKey};
 use slotmap::{Key, SlotMap};
@@ -12,10 +12,17 @@ use uuid::Uuid;
 type AssetPath = String;
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
+pub struct AssetStatus {
+    pub loaded: bool,
+    pub asset_entity: Option<Entity>,
+}
+
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct Model<TKey: Key> {
-    pub path_buf: PathBuf,
+    pub assets_path_buf: PathBuf,
     // TODO: Handle material == None
     pub meshes_dependencies: Vec<MeshAsset<TKey>>,
+    pub asset_status: AssetStatus,
 }
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
@@ -30,16 +37,16 @@ pub struct MeshAsset<TKey: Key> {
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct MaterialAsset<TKey: Key> {
     pub key: TKey,
-    pub path: PathBuf,
+    pub assets_path_buf: PathBuf,
     pub textures_dependencies: Vec<TextureReference>,
-    pub loaded: bool,
+    pub asset_status: AssetStatus,
 }
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct TextureAsset<TKey: Key> {
     pub key: TKey,
-    pub path: PathBuf,
-    pub loaded: bool,
+    pub assets_path_buf: PathBuf,
+    pub asset_status: AssetStatus,
 }
 
 #[derive(Default)]
@@ -64,6 +71,8 @@ impl AssetDatabase {
         }
     }
 
+    pub fn update_model_asset_entity(&mut self, asset_entity: Option<Entity>) {}
+
     pub fn track_model(
         &mut self,
         meshes_dependencies: Vec<MeshAsset<MeshBufferKey>>,
@@ -73,8 +82,9 @@ impl AssetDatabase {
 
         println!("Tracking model: {}", path_buf.display());
         let model = Model {
-            path_buf,
+            assets_path_buf: path_buf,
             meshes_dependencies,
+            asset_status: AssetStatus::default(),
         };
 
         self.models.insert(model);
@@ -91,9 +101,9 @@ impl AssetDatabase {
         println!("Tracking material: {}", path_buf.display());
         let material = MaterialAsset {
             key: material_reference.key,
-            path: path_buf,
+            assets_path_buf: path_buf,
             textures_dependencies: textures,
-            loaded: true,
+            asset_status: AssetStatus::default(),
         };
 
         self.materials.insert(material);
@@ -105,8 +115,8 @@ impl AssetDatabase {
         println!("Tracking texture: {}", path_buf.display());
         let texture = TextureAsset {
             key: texture_reference.key,
-            path: path_buf,
-            loaded: true,
+            assets_path_buf: path_buf,
+            asset_status: AssetStatus::default(),
         };
 
         self.textures.insert(texture);

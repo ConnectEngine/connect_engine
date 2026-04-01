@@ -1,6 +1,6 @@
 //#![windows_subsystem = "windows"]
 
-use engine::{GamePlugin, engine::Engine};
+use connect_engine::{GamePlugin, engine::Engine};
 use libloading::{Library, Symbol};
 use winit::{
     application::ApplicationHandler,

@@ -22,6 +22,9 @@ pub struct SpawnEventRecord {
 
 #[derive(Default, Event)]
 pub struct SpawnEvent {
+    // FIXME: Currently, path_buf corresponds (aka "key") to the  `AssetDatabase`'s asset,
+    // later should be used a lightweight key (maybe use `slotmap` create), not sure, currently.
+    pub asset_path_buf: PathBuf,
     pub spawn_records: Vec<SpawnEventRecord>,
     pub parent_entity: Option<Entity>,
 }

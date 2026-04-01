@@ -11,9 +11,10 @@ use rapier3d::{
     },
 };
 
-use crate::engine::{LocalTransform, Physics};
+use crate::engine::Physics;
 
 use connect_renderer::*;
+use connect_shared::*;
 
 #[derive(Component, Clone, Copy)]
 #[require(LocalTransform)]

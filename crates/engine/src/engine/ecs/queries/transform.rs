@@ -1,7 +1,7 @@
 use bevy_ecs::query::QueryData;
 use connect_math::{EulerRot, Mat4, Quat, Vec3};
 
-use crate::engine::{LocalTransform, ecs::components::local_transform::GlobalTransform};
+use connect_shared::*;
 
 #[derive(QueryData)]
 #[query_data(mutable)]

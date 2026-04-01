@@ -11,14 +11,8 @@ use bevy_ecs::{
     system::{Command, Commands, Local, Query, Res, ResMut},
     world::World,
 };
-use engine::{
-    GamePlugin,
-    engine::{
-        AudioReference, Camera, ClippingPlanes, Input, LoadModelEvent, LocalTransform, Physics,
-        Time, Transform,
-    },
-};
-use engine::{connect_math::*, engine::Audio};
+use connect_engine::{connect_math::*, engine::*, *};
+
 // FIXME
 use connect_renderer::Mesh;
 use winit::keyboard::KeyCode;

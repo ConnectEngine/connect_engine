@@ -1,6 +1,5 @@
 use bevy_ecs::component::Component;
-
-use crate::engine::LocalTransform;
+use connect_shared::*;
 
 #[derive(Default, Clone, Copy)]
 pub struct ClippingPlanes {

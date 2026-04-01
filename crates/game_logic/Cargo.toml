@@ -7,8 +7,8 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [dependencies]
+connect_engine = { workspace = true }
 # FIXME
 connect_renderer = { workspace = true }
-engine = { workspace = true }
 bevy_ecs = { workspace = true }
 winit = { workspace = true }

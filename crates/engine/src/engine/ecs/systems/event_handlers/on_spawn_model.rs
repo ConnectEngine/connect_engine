@@ -1,13 +1,21 @@
-use bevy_ecs::{hierarchy::ChildOf, name::Name, observer::On, system::Commands};
+use bevy_ecs::{
+    hierarchy::ChildOf,
+    name::Name,
+    observer::On,
+    system::{Commands, ResMut},
+};
+use connect_asset_database::AssetDatabase;
 use connect_math::*;
 use connect_renderer::*;
 
-use crate::engine::{
-    components::local_transform::{GlobalTransform, LocalTransform},
-    events::SpawnEvent,
-};
+use connect_loader::events::*;
+use connect_shared::*;
 
-pub fn on_spawn_mesh_system(spawn_event: On<SpawnEvent>, mut commands: Commands) {
+pub fn on_spawn_mesh_system(
+    spawn_event: On<SpawnEvent>,
+    mut commands: Commands,
+    mut asset_database: ResMut<AssetDatabase>,
+) {
     let scene_transform = LocalTransform {
         local_position: Vec3::ZERO,
         local_rotation: Quat::IDENTITY,

@@ -19,7 +19,7 @@ use vulkanite::vk::{
 };
 use walkdir::WalkDir;
 
-mod events;
+pub mod events;
 
 pub use events::*;
 

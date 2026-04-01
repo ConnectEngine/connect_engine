@@ -71,7 +71,7 @@ memmap2 = "0.9.10"
 ahash = "0.8.12"
 nameof = "1.3.0"
 
-engine = { path = "crates/engine" }
+connect_engine = { path = "crates/engine" }
 game_logic = { path = "crates/game_logic" }
 connect_math = { path = "crates/engine/crates/connect_math" }
 connect_importer = { path = "crates/engine/crates/asset_management/connect_importer" }

@@ -775,6 +775,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "connect_engine"
+version = "0.1.0"
+dependencies = [
+ "ahash",
+ "asset-importer",
+ "bevy_ecs",
+ "bytemuck",
+ "connect_asset_database",
+ "connect_importer",
+ "connect_information",
+ "connect_loader",
+ "connect_math",
+ "connect_renderer",
+ "connect_shared",
+ "dolly",
+ "fast_image_resize",
+ "image",
+ "kira",
+ "ktx2-rw",
+ "meshopt",
+ "nameof",
+ "num_cpus",
+ "padding-struct",
+ "rapier3d",
+ "raw-window-handle",
+ "rayon",
+ "rkyv",
+ "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
+ "vk-mem",
+ "vulkanite",
+ "winit",
+]
+
+[[package]]
 name = "connect_importer"
 version = "0.1.0"
 dependencies = [
@@ -1250,40 +1284,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "engine"
-version = "0.1.0"
-dependencies = [
- "ahash",
- "asset-importer",
- "bevy_ecs",
- "bytemuck",
- "connect_asset_database",
- "connect_importer",
- "connect_information",
- "connect_loader",
- "connect_math",
- "connect_renderer",
- "connect_shared",
- "dolly",
- "fast_image_resize",
- "image",
- "kira",
- "ktx2-rw",
- "meshopt",
- "nameof",
- "num_cpus",
- "padding-struct",
- "rapier3d",
- "raw-window-handle",
- "rayon",
- "rkyv",
- "slotmap 1.1.1 (git+https://github.com/Jerrody/slotmap)",
- "vk-mem",
- "vulkanite",
- "winit",
-]
-
-[[package]]
 name = "equator"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1554,8 +1554,8 @@ name = "game_logic"
 version = "0.1.0"
 dependencies = [
  "bevy_ecs",
+ "connect_engine",
  "connect_renderer",
- "engine",
  "winit",
 ]
 
@@ -3617,7 +3617,7 @@ name = "runner"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata",
- "engine",
+ "connect_engine",
  "game_logic",
  "libloading 0.9.0",
  "snmalloc-rs",

@@ -1,5 +1,4 @@
 mod ecs;
-mod events;
 mod setup;
 mod utils;
 
@@ -34,10 +33,10 @@ use crate::{
 
 pub use audio::*;
 pub use components::camera::{Camera, ClippingPlanes};
-pub use components::local_transform::LocalTransform;
 pub use components::time::Time;
+pub use connect_loader::events::LoadModelEvent;
 pub use connect_math;
-pub use events::LoadModelEvent;
+pub use connect_shared::LocalTransform;
 pub use input::*;
 pub use physics::{Collider, RigidBody};
 pub use queries::transform::*;

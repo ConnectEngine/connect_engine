@@ -2,9 +2,10 @@ use bevy_ecs::system::{Query, Res, ResMut};
 use bytemuck::Pod;
 use connect_math::*;
 
-use crate::engine::{LocalTransform, components::camera::Camera};
+use crate::engine::components::camera::Camera;
 
 use connect_renderer::*;
+use connect_shared::*;
 
 pub fn update_resources_system(
     render_context: Res<RendererContextResource>,
@@ -82,7 +83,10 @@ pub fn update_resources_system(
     }
 }
 
-fn update_buffer_data<T: Pod>(buffer_to_update: &SwappableBuffer<T>, buffers: &BuffersPoolResource) {
+fn update_buffer_data<T: Pod>(
+    buffer_to_update: &SwappableBuffer<T>,
+    buffers: &BuffersPoolResource,
+) {
     let data_to_write = buffer_to_update.get_objects_to_write_as_slice();
 
     let buffer_to_update_reference = buffer_to_update.get_current_buffer();

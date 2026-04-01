@@ -18,10 +18,7 @@ use meshopt::{
     optimize_vertex_fetch_remap, remap_index_buffer, remap_vertex_buffer, typed_to_bytes,
 };
 
-use crate::engine::{
-    components::local_transform::LocalTransform,
-    events::{LoadModelEvent, SpawnEvent, SpawnEventRecord},
-};
+use connect_loader::events::*;
 
 use connect_renderer::*;
 

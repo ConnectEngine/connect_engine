@@ -4,11 +4,10 @@ use bevy_ecs::{
     system::{Query, ResMut},
 };
 use connect_math::{Mat4, Quat, Vec3};
+use connect_shared::GlobalTransform;
 
-use crate::engine::{
-    LocalTransform, Physics, RigidBody,
-    ecs::{components::local_transform::GlobalTransform, physics::PhysicsManager},
-};
+use crate::engine::{Physics, RigidBody, ecs::physics::PhysicsManager};
+use connect_shared::*;
 
 pub fn physics_tick_system(mut physics: ResMut<PhysicsManager>) {
     physics.step();
