@@ -102,9 +102,8 @@ impl AssetDatabase {
     pub fn track_model(
         &mut self,
         meshes_dependencies: Vec<MeshAsset<MeshBufferKey>>,
-        mut path_buf: PathBuf,
+        path_buf: PathBuf,
     ) {
-        println!("Tracking model: {}", path_buf.display());
         let model = Model {
             assets_folder_path_buf: path_buf,
             meshes_dependencies,
@@ -117,10 +116,9 @@ impl AssetDatabase {
     pub fn track_material(
         &mut self,
         material_reference: MaterialReference,
-        mut path_buf: PathBuf,
+        path_buf: PathBuf,
         textures: Vec<TextureReference>,
     ) {
-        println!("Tracking material: {}", path_buf.display());
         let material = MaterialAsset {
             key: material_reference.key,
             assets_path_buf: path_buf,
@@ -131,8 +129,7 @@ impl AssetDatabase {
         self.materials.push(material);
     }
 
-    pub fn track_texture(&mut self, texture_reference: TextureReference, mut path_buf: PathBuf) {
-        println!("Tracking texture: {}", path_buf.display());
+    pub fn track_texture(&mut self, texture_reference: TextureReference, path_buf: PathBuf) {
         let texture = TextureAsset {
             key: texture_reference.key,
             assets_path_buf: path_buf,

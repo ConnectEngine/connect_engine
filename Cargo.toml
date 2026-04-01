@@ -107,5 +107,7 @@ debug = 0
 
 [profile.release]
 opt-level = 3
-lto = true
+# FIXME: Windows doesn't support LTO, when we use dynamic library linking. Windows SUCKS.
+# In future, maybe add FFI-Boundary to the user space, but it's drastically make verbose API.
+# lto = true
 codegen-units = 1
