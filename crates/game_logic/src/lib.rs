@@ -6,8 +6,7 @@ use bevy_ecs::{
     entity::{Entity, EntityCloner},
     entity_disabling::Disabled,
     hierarchy::Children,
-    query::{Has, With},
-    relationship::RelationshipTarget,
+    query::With,
     system::{Command, Commands, Local, Query, Res, ResMut},
     world::World,
 };
