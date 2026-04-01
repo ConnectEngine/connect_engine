@@ -220,7 +220,6 @@ impl TryInto<Format> for TextureFormat {
             TextureFormat::Bc5 => Ok(Format::Bc5UnormBlock),
             TextureFormat::Bc6H => Ok(Format::Bc6HSfloatBlock),
             TextureFormat::Bc7 => Ok(Format::Bc7SrgbBlock),
-            _ => Err(self),
         }
     }
 }
