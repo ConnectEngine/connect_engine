@@ -186,11 +186,7 @@ fn fire_from_gun(
     }
 }
 
-fn spawn_planet(
-    mut commands: Commands,
-    mut random: ResMut<Random>,
-    asset_database: Res<AssetDatabase>,
-) {
+fn spawn_planet(mut commands: Commands, asset_database: Res<AssetDatabase>) {
     let planet_scale = 20.0;
     let mut planet_transform = LocalTransform::IDENTITY;
     planet_transform.local_scale *= planet_scale;
@@ -203,35 +199,22 @@ fn spawn_planet(
         rotation: Vec3::default(),
         tag: PlanetTag,
     });
-
-    /*   let asteroid = 1.0;
-    let mut asteroid_transform = LocalTransform::IDENTITY;
-    asteroid_transform.local_scale *= asteroid;
-
-    let asteroid_entity = commands.spawn((AsteroidPrefab, Disabled, asteroid_transform));
-    let asteroid_entity_id = asteroid_entity.id();
-
-    commands.trigger(LoadModelEvent {
-        path: PathBuf::from(std::format!(
-            "{}/assets/models/asteroid.glb",
-            exe_path.as_os_str().display()
-        )),
-        parent_entity: Some(asteroid_entity_id),
-    }); */
 }
 
 fn spawn_asteroids(
     mut commands: Commands,
+    asset_database: Res<AssetDatabase>,
     planet_query: Query<&LocalTransform, With<PlanetTag>>,
-    asteroid_prefab_query: Query<(Entity, Option<&Children>, Has<Disabled>), With<AsteroidPrefab>>,
     mut random: ResMut<Random>,
     mut has_spawned: Local<bool>,
 ) {
-    if !*has_spawned
-        && let Ok((asteroid_prefab_entity, children, _)) = asteroid_prefab_query.single()
-        && children.is_some()
-        && !children.unwrap().is_empty()
-    {
+    let asteroid = 1.0;
+    let mut asteroid_transform = LocalTransform::IDENTITY;
+    asteroid_transform.local_scale *= asteroid;
+
+    let model_asset_asteroid_entity = asset_database.get_model_asset_entity("models/asteroid.glb");
+
+    if !*has_spawned {
         *has_spawned = true;
 
         let mut inner_radius = 50.0;
@@ -264,7 +247,7 @@ fn spawn_asteroids(
             };
 
             commands.queue(AsteroidCloneHierarchyCommand {
-                source: asteroid_prefab_entity,
+                source: model_asset_asteroid_entity,
                 position: planet_transform.local_position + position,
                 scale: vec3(scale, scale, scale),
                 rotation: vec3(
