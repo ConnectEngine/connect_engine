@@ -213,7 +213,7 @@ impl Drop for Engine {
             .world
             .remove_resource::<RendererContextResource>()
             .unwrap();
-        let mut buffers_pool = self.world.remove_resource::<BuffersPool>().unwrap();
+        let mut buffers_pool = self.world.remove_resource::<BuffersPoolResource>().unwrap();
         let mut textures_pool = self
             .world
             .remove_resource::<TexturesPoolResource>()

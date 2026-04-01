@@ -9,7 +9,7 @@ use vulkanite::vk::{
     },
 };
 
-use crate::{AllocatedImage, BuffersPool, UploadContext, transition_image};
+use crate::{AllocatedImage, BuffersPoolResource, UploadContext, transition_image};
 
 #[derive(Resource)]
 pub struct VulkanContextResource {
@@ -30,7 +30,7 @@ impl VulkanContextResource {
     pub fn transfer_data_to_image(
         &self,
         allocated_image: &AllocatedImage,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         data_to_copy: *const std::ffi::c_void,
         upload_context: &UploadContext,
         size: Option<usize>,

@@ -11,7 +11,7 @@ pub fn prepare_shaders_system(
     render_context: ResMut<RendererContextResource>,
     mut renderer_resources: ResMut<RendererResources>,
     descriptor_set_handle: Res<DescriptorSetHandle>,
-    mut buffers_pool: ResMut<BuffersPool>,
+    mut buffers_pool: ResMut<BuffersPoolResource>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
     let device = vulkan_ctx_resource.device;
@@ -116,7 +116,7 @@ pub fn prepare_shaders_system(
         Some(SwappableBuffer::new(scene_data_buffers));
 
     renderer_resources.materials_data_buffer_reference = materials_data_buffer_reference;
-    let materials_pool = MaterialsPool::new(
+    let materials_pool = MaterialsPoolResource::new(
         materials_data_buffer_reference
             .get_buffer_info()
             .device_address,

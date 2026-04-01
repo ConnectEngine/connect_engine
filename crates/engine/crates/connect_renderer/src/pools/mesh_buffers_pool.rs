@@ -33,9 +33,9 @@ pub struct MeshBuffer {
     pub mesh_data: MeshData,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeshBufferReference {
-    key: MeshBufferKey,
+    pub key: MeshBufferKey,
 }
 
 impl MeshBufferReference {

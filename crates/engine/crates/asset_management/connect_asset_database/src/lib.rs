@@ -1,27 +1,45 @@
 use std::{
     collections::{HashMap, HashSet},
-    path::{self, PathBuf},
+    path::PathBuf,
 };
 
 use bevy_ecs::resource::Resource;
-use connect_renderer::{MaterialReference, TextureReference};
-use connect_shared::{MaterialKey, TextureKey};
+use connect_renderer::{MaterialReference, MeshBufferReference, TextureReference};
+use connect_shared::{MaterialKey, MeshBufferKey, TextureKey};
 use slotmap::{Key, SlotMap};
 use uuid::Uuid;
 
 type AssetPath = String;
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
-pub struct Material<TKey: Key> {
-    pub key: TKey,
-    pub path: PathBuf,
-    pub textures: Vec<TextureReference>,
+pub struct Model<TKey: Key> {
+    pub path_buf: PathBuf,
+    // TODO: Handle material == None
+    pub meshes_dependencies: Vec<MeshAsset<TKey>>,
 }
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
-pub struct Texture<TKey: Key> {
+pub struct MeshAsset<TKey: Key> {
+    pub key: TKey,
+    // TODO: Handle material == None
+    pub mesh_buffer_reference: MeshBufferReference,
+    pub material_dependency: Option<MaterialReference>,
+    pub loaded: bool,
+}
+
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
+pub struct MaterialAsset<TKey: Key> {
     pub key: TKey,
     pub path: PathBuf,
+    pub textures_dependencies: Vec<TextureReference>,
+    pub loaded: bool,
+}
+
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
+pub struct TextureAsset<TKey: Key> {
+    pub key: TKey,
+    pub path: PathBuf,
+    pub loaded: bool,
 }
 
 #[derive(Default)]
@@ -32,18 +50,34 @@ pub struct AssetCategory<TKey: Key> {
 
 #[derive(Resource)]
 pub struct AssetDatabase {
-    pub models: AssetCategory<TextureKey>,
-    pub materials: Vec<Material<MaterialKey>>,
-    pub textures: HashSet<Texture<TextureKey>>,
+    pub models: HashSet<Model<MeshBufferKey>>,
+    pub materials: HashSet<MaterialAsset<MaterialKey>>,
+    pub textures: HashSet<TextureAsset<TextureKey>>,
 }
 
 impl AssetDatabase {
     pub fn new() -> Self {
         AssetDatabase {
-            textures: Default::default(),
             models: Default::default(),
+            textures: Default::default(),
             materials: Default::default(),
         }
+    }
+
+    pub fn track_model(
+        &mut self,
+        meshes_dependencies: Vec<MeshAsset<MeshBufferKey>>,
+        mut path_buf: PathBuf,
+    ) {
+        path_buf = Self::trim_extensions_from_path(path_buf);
+
+        println!("Tracking model: {}", path_buf.display());
+        let model = Model {
+            path_buf,
+            meshes_dependencies,
+        };
+
+        self.models.insert(model);
     }
 
     pub fn track_material(
@@ -55,20 +89,24 @@ impl AssetDatabase {
         path_buf = Self::trim_extensions_from_path(path_buf);
 
         println!("Tracking material: {}", path_buf.display());
-        let material = Material {
+        let material = MaterialAsset {
             key: material_reference.key,
             path: path_buf,
-            textures,
+            textures_dependencies: textures,
+            loaded: true,
         };
+
+        self.materials.insert(material);
     }
 
     pub fn track_texture(&mut self, texture_reference: TextureReference, mut path_buf: PathBuf) {
         path_buf = Self::trim_extensions_from_path(path_buf);
 
         println!("Tracking texture: {}", path_buf.display());
-        let texture = Texture {
+        let texture = TextureAsset {
             key: texture_reference.key,
             path: path_buf,
+            loaded: true,
         };
 
         self.textures.insert(texture);

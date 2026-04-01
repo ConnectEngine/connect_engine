@@ -53,7 +53,11 @@ impl DescriptorSetHandle {
         }
     }
 
-    pub fn update_binding(&mut self, buffers_pool: &BuffersPool, descriptor_kind: DescriptorKind) {
+    pub fn update_binding(
+        &mut self,
+        buffers_pool: &BuffersPoolResource,
+        descriptor_kind: DescriptorKind,
+    ) {
         let descriptor_type = descriptor_kind.get_descriptor_type();
 
         let descriptors_sizes = self.descriptors_sizes;

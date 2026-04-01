@@ -159,14 +159,14 @@ pub struct MaterialInfo {
 }
 
 #[derive(Resource)]
-pub struct MaterialsPool {
+pub struct MaterialsPoolResource {
     slots: SlotMap<MaterialKey, MaterialInstance>,
     materials_to_write: AHashMap<MaterialReference, Vec<u8>>,
     base_device_address_material_data: DeviceAddress,
     variable_offsets: VariableOffsets,
 }
 
-impl MaterialsPool {
+impl MaterialsPoolResource {
     pub fn new(
         base_device_address_material_data: DeviceAddress,
         pre_allocated_count: usize,

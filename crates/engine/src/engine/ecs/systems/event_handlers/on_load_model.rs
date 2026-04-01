@@ -86,11 +86,11 @@ pub fn on_load_model_system(
     load_model_event: On<LoadModelEvent>,
     mut commands: Commands,
     vulkan_context: Res<VulkanContextResource>,
-    mut materials_pool: ResMut<MaterialsPool>,
+    mut materials_pool: ResMut<MaterialsPoolResource>,
     renderer_context_resource: Res<RendererContextResource>,
     renderer_resources: ResMut<RendererResources>,
     mut descriptor_set_handle: ResMut<DescriptorSetHandle>,
-    mut buffers_pool: ResMut<BuffersPool>,
+    mut buffers_pool: ResMut<BuffersPoolResource>,
     mut textures_pool: ResMut<TexturesPoolResource>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
@@ -472,7 +472,7 @@ pub fn on_load_model_system(
 }
 
 pub fn create_and_copy_to_buffer(
-    buffers_pool: &mut BuffersPool,
+    buffers_pool: &mut BuffersPoolResource,
     src: *const c_void,
     size: usize,
     name: String,
@@ -496,7 +496,7 @@ fn try_upload_texture(
     vulkan_context: &VulkanContextResource,
     renderer_context: &RendererContextResource,
     textures_pool: &mut TexturesPoolResource,
-    buffers_pool: &mut BuffersPool,
+    buffers_pool: &mut BuffersPoolResource,
     descriptor_set_handle: &mut DescriptorSetHandle,
     scene: &asset_importer::Scene,
     uploaded_textures: &mut HashMap<usize, TextureReference>,

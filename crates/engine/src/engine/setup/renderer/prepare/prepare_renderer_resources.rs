@@ -35,7 +35,7 @@ impl Engine {
             materials_data_buffer_reference: Default::default(),
         };
 
-        let mut buffers_pool = BuffersPool::new(
+        let mut buffers_pool = BuffersPoolResource::new(
             device,
             allocator,
             upload_command_group,
@@ -77,7 +77,7 @@ impl Engine {
     fn create_descriptor_set_handle(
         device: Device,
         allocator: vma::Allocator,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         device_properties_resource: &DevicePropertiesResource,
         push_constant_ranges: &[PushConstantRange],
     ) -> DescriptorSetHandle {

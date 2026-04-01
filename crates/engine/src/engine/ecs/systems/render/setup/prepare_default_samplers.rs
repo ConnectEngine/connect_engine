@@ -5,7 +5,7 @@ use vulkanite::vk::*;
 pub fn prepare_default_samplers_system(
     mut renderer_resources: ResMut<RendererResources>,
     mut descriptor_set_handle: ResMut<DescriptorSetHandle>,
-    buffers_pool: Res<BuffersPool>,
+    buffers_pool: Res<BuffersPoolResource>,
     mut samplers_pool: ResMut<SamplersPool>,
 ) {
     let default_sampler_reference =

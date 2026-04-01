@@ -9,7 +9,7 @@ use connect_renderer::*;
 pub fn update_resources_system(
     render_context: Res<RendererContextResource>,
     mut renderer_resources: ResMut<RendererResources>,
-    buffers: ResMut<BuffersPool>,
+    buffers: ResMut<BuffersPoolResource>,
     mut frame_context: ResMut<frame_context_resource::FrameContextResource>,
     transform_camera_query: Query<(&Camera, &LocalTransform)>,
 ) {
@@ -82,7 +82,7 @@ pub fn update_resources_system(
     }
 }
 
-fn update_buffer_data<T: Pod>(buffer_to_update: &SwappableBuffer<T>, buffers: &BuffersPool) {
+fn update_buffer_data<T: Pod>(buffer_to_update: &SwappableBuffer<T>, buffers: &BuffersPoolResource) {
     let data_to_write = buffer_to_update.get_objects_to_write_as_slice();
 
     let buffer_to_update_reference = buffer_to_update.get_current_buffer();

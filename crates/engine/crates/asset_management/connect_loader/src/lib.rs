@@ -6,9 +6,9 @@ use std::{
 
 use bevy_ecs::{
     resource::Resource,
-    system::{Res, ResMut},
+    system::{Commands, Res, ResMut},
 };
-use connect_asset_database::AssetDatabase;
+use connect_asset_database::*;
 use connect_information::Information;
 use connect_math::*;
 use connect_shared::*;
@@ -35,8 +35,8 @@ enum AssetType {
 struct AssetToLoad {
     pub uuid: Uuid,
     pub name: String,
-    pub path_buf: PathBuf,
-    pub original_path_buf: PathBuf,
+    pub artifacts_path_buf: PathBuf,
+    pub assets_path_buf: PathBuf,
 }
 
 #[derive(Default, Resource)]
@@ -82,7 +82,6 @@ impl Loader {
 
     pub(crate) fn resolve_meta_files(
         &mut self,
-        assset_database: &mut AssetDatabase,
         assets_folder_path: &Path,
         artifacts_folder_path: &Path,
     ) {
@@ -93,8 +92,8 @@ impl Loader {
                     self.models_to_load.push(AssetToLoad {
                         uuid: model_asset_metadata.uuid,
                         name: model_asset_metadata.name.clone(),
-                        original_path_buf: model_asset_metadata.path_buf,
-                        path_buf: Self::resolve_path(
+                        assets_path_buf: model_asset_metadata.path_buf,
+                        artifacts_path_buf: Self::resolve_path(
                             AssetType::Model,
                             &model_asset_metadata.name,
                             model_asset_metadata.uuid,
@@ -106,8 +105,8 @@ impl Loader {
                     self.textures_to_load.push(AssetToLoad {
                         uuid: texture_asset_metadata.uuid,
                         name: texture_asset_metadata.name.clone(),
-                        original_path_buf: texture_asset_metadata.path_buf,
-                        path_buf: Self::resolve_path(
+                        assets_path_buf: texture_asset_metadata.path_buf,
+                        artifacts_path_buf: Self::resolve_path(
                             AssetType::Texture,
                             &texture_asset_metadata.name,
                             texture_asset_metadata.uuid,
@@ -119,25 +118,32 @@ impl Loader {
                     self.materials_to_load.push(AssetToLoad {
                         uuid: material_asset_metadata.uuid,
                         name: material_asset_metadata.name.clone(),
-                        original_path_buf: material_asset_metadata.path_buf.clone(),
-                        path_buf: assets_folder_path.join(material_asset_metadata.path_buf),
+                        assets_path_buf: material_asset_metadata.path_buf.clone(),
+                        artifacts_path_buf: assets_folder_path
+                            .join(material_asset_metadata.path_buf),
                     });
                 }
             });
     }
 
+    // TODO: Maybe move logic of uploading GPU resources to the new next phase (aka. "Upload Phase", for example), not Loader phase itself.
+    // Too much things Loader do, extremely fragile thing to the changes.
     pub(crate) fn load_assets(
         &mut self,
+        commands: &mut Commands,
         asset_database: &mut AssetDatabase,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
+        renderer_resources: &RendererResources,
         descriptor_set_handle: &mut DescriptorSetHandle,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
+        materials_pool: &mut MaterialsPoolResource,
         textures_pool: &mut TexturesPoolResource,
         mesh_buffers_pool: &mut MeshBuffersPool,
     ) {
         self.models_to_load.iter().for_each(|model_to_load| {
-            let serialized_model_file = std::fs::File::open(&model_to_load.path_buf).unwrap();
+            let serialized_model_file =
+                std::fs::File::open(&model_to_load.artifacts_path_buf).unwrap();
 
             let serialized_model_map = unsafe { Mmap::map(&serialized_model_file).unwrap() };
 
@@ -177,12 +183,15 @@ impl Loader {
                 Vec::with_capacity(archived_serialized_model.meshes.len());
             let mut uploaded_meshes =
                 HashMap::with_capacity(archived_serialized_model.meshes.len());
+            let mut meshes_dependencies: Vec<MeshAsset<MeshBufferKey>> =
+                Vec::with_capacity(archived_serialized_model.meshes.len());
 
             archived_serialized_model
                 .hierarchy
                 .serialized_nodes
                 .iter()
                 .for_each(|node| {
+                    let mut material_reference = None;
                     if node.mesh_index.is_some() {
                         let mesh_index = node.mesh_index.unwrap().to_native() as usize;
 
@@ -197,15 +206,17 @@ impl Loader {
                                 .unwrap();
 
                             // TODO: Handle Material == None
-                            self.load_material(
+                            material_reference = Some(self.load_material(
                                 asset_database,
                                 vulkan_context_resource,
                                 renderer_context_resource,
+                                renderer_resources,
                                 descriptor_set_handle,
-                                textures_pool,
                                 buffers_pool,
+                                materials_pool,
+                                textures_pool,
                                 serialized_mesh.material_uuid,
-                            );
+                            ));
 
                             mesh_name = serialized_mesh.name.to_string();
 
@@ -262,8 +273,8 @@ impl Loader {
 
                             mesh_buffer_reference =
                                 mesh_buffers_pool.insert_mesh_buffer(mesh_buffer);
-
-                            mesh_buffers_to_upload.push(mesh_buffer_reference);
+                            mesh_buffers_to_upload
+                                .push((mesh_buffer_reference, material_reference));
 
                             e.insert((mesh_name.clone(), mesh_buffer_reference));
                         } else {
@@ -277,9 +288,7 @@ impl Loader {
                             .parent_index
                             .as_ref()
                             .map(|parent_index_value| parent_index_value.to_native() as usize);
-                        // FIXME
-                        //spawn_event_record.material_reference = Some(material_reference);
-                        spawn_event_record.material_reference = None;
+                        spawn_event_record.material_reference = material_reference;
                         spawn_event_record.mesh_buffer_reference = Some(mesh_buffer_reference);
                         spawn_event_record.transform = LocalTransform::IDENTITY;
 
@@ -287,9 +296,21 @@ impl Loader {
                     }
                 });
 
+            mesh_buffers_to_upload.iter().for_each(
+                |&(mesh_buffer_reference, material_reference)| {
+                    meshes_dependencies.push(MeshAsset {
+                        key: mesh_buffer_reference.key,
+                        mesh_buffer_reference,
+                        material_dependency: material_reference,
+                        loaded: true,
+                    });
+                },
+            );
+            asset_database.track_model(meshes_dependencies, model_to_load.assets_path_buf.clone());
+
             let mesh_objects_to_write = mesh_buffers_to_upload
                 .iter()
-                .map(|mesh_buffer_reference| {
+                .map(|(mesh_buffer_reference, _)| {
                     let mesh_buffer_ref = unsafe {
                         mesh_buffers_pool
                             .get_mesh_buffer(*mesh_buffer_reference)
@@ -332,7 +353,7 @@ impl Loader {
             let mesh_objects_to_copy_regions = mesh_buffers_to_upload
                 .into_iter()
                 .enumerate()
-                .map(|(src_mesh_buffer_index, mesh_buffer_reference)| {
+                .map(|(src_mesh_buffer_index, (mesh_buffer_reference, _))| {
                     let src_offset = src_mesh_buffer_index as u32 * mesh_object_size as u32;
                     let dst_offset = mesh_buffer_reference.get_index() * mesh_object_size as u32;
 
@@ -360,6 +381,33 @@ impl Loader {
                     &mesh_objects_to_copy_regions,
                 );
             }
+
+            let materials_data_buffer_reference =
+                renderer_resources.materials_data_buffer_reference;
+            let materials_data_to_write_slice = materials_pool.get_materials_data_to_write();
+            for (&material_reference, data_to_write) in materials_data_to_write_slice {
+                let ptr_materials_data_to_write = data_to_write.as_slice().as_ptr();
+
+                let material_instance = materials_pool
+                    .get_material_instance(material_reference)
+                    .unwrap();
+
+                let regions = [BufferCopy {
+                    dst_offset: material_instance.get_offset() as _,
+                    size: material_instance.get_size() as _,
+                    ..Default::default()
+                }];
+
+                unsafe {
+                    buffers_pool.transfer_data_to_buffer_with_offset(
+                        materials_data_buffer_reference,
+                        ptr_materials_data_to_write as *const _,
+                        &regions,
+                    );
+                }
+            }
+
+            commands.trigger(spawn_event);
         });
     }
 
@@ -368,11 +416,13 @@ impl Loader {
         asset_database: &mut AssetDatabase,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
+        renderer_resources: &RendererResources,
         descriptor_set_handle: &mut DescriptorSetHandle,
+        buffers_pool: &mut BuffersPoolResource,
+        materials_pool: &mut MaterialsPoolResource,
         textures_pool: &mut TexturesPoolResource,
-        buffers_pool: &mut BuffersPool,
         material_uuid: Uuid,
-    ) {
+    ) -> MaterialReference {
         let found_material = self
             .materials_to_load
             .iter()
@@ -382,7 +432,8 @@ impl Loader {
                 material_uuid
             ));
 
-        let serialized_material_file = std::fs::File::open(&found_material.path_buf).unwrap();
+        let serialized_material_file =
+            std::fs::File::open(&found_material.artifacts_path_buf).unwrap();
         let serialized_material_map = unsafe { Mmap::map(&serialized_material_file).unwrap() };
         let archived_serialized_material = rkyv::access::<
             ArchivedSerializedMaterial,
@@ -390,7 +441,8 @@ impl Loader {
         >(&serialized_material_map)
         .unwrap();
 
-        let mut loaded_textures = Vec::new();
+        let mut loaded_textures =
+            Vec::with_capacity(archived_serialized_material.texture_inputs.len());
         archived_serialized_material
             .texture_inputs
             .iter()
@@ -410,7 +462,30 @@ impl Loader {
                 loaded_textures.push(texture_reference);
             });
 
-        // TODO: Upload material.
+        let mut material_data =
+            *bytemuck::from_bytes::<MaterialData>(&archived_serialized_material.data);
+        // FIXME: Straightforward implementation of data patching.
+        material_data.material_textures.albedo_texture_index = loaded_textures[0].get_index();
+        material_data.material_textures.metallic_texture_index =
+            renderer_resources.fallback_texture_reference.get_index();
+        material_data.material_textures.roughness_texture_index =
+            renderer_resources.fallback_texture_reference.get_index();
+
+        // FIXME: Take into account `Material State`.
+        let material_reference: MaterialReference = materials_pool.write_material(
+            bytemuck::bytes_of(&material_data),
+            MaterialState {
+                material_type: MaterialType::Opaque,
+            },
+        );
+
+        asset_database.track_material(
+            material_reference,
+            found_material.artifacts_path_buf.clone(),
+            loaded_textures,
+        );
+
+        material_reference
     }
 
     fn load_texture(
@@ -420,7 +495,7 @@ impl Loader {
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
         textures_pool: &mut TexturesPoolResource,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         texture_uuid: Uuid,
     ) -> TextureReference {
         let found_texture = self
@@ -432,7 +507,8 @@ impl Loader {
                 texture_uuid
             ));
 
-        let serialized_texture_file = std::fs::File::open(&found_texture.path_buf).unwrap();
+        let serialized_texture_file =
+            std::fs::File::open(&found_texture.artifacts_path_buf).unwrap();
         let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
 
         let ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
@@ -458,7 +534,7 @@ impl Loader {
         );
 
         // TODO: Track textures based on material, if loaded textures as not standalone.
-        assset_database.track_texture(texture_reference, found_texture.original_path_buf.clone());
+        assset_database.track_texture(texture_reference, found_texture.assets_path_buf.clone());
 
         texture_reference
     }
@@ -469,7 +545,7 @@ impl Loader {
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
         textures_pool: &mut TexturesPoolResource,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         texture_metadata: &TextureMetadata,
         data: &[u8],
     ) -> TextureReference {
@@ -547,7 +623,7 @@ impl Loader {
     }
 
     fn create_and_copy_to_buffer(
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         src: *const std::ffi::c_void,
         size: usize,
         name: String,
@@ -569,13 +645,16 @@ impl Loader {
 }
 
 pub fn load_assets_system(
+    mut commands: Commands,
     information: Res<Information>,
     mut loader: ResMut<Loader>,
     mut asset_database: ResMut<AssetDatabase>,
     vulkan_context_resource: Res<VulkanContextResource>,
     renderer_context_resource: Res<RendererContextResource>,
+    renderer_resources: Res<RendererResources>,
     mut descriptor_set_handle: ResMut<DescriptorSetHandle>,
-    mut buffers_pool: ResMut<BuffersPool>,
+    mut buffers_pool: ResMut<BuffersPoolResource>,
+    mut materials_pool: ResMut<MaterialsPoolResource>,
     mut textures_pool: ResMut<TexturesPoolResource>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
@@ -583,7 +662,6 @@ pub fn load_assets_system(
 
     loader.collect_meta_files(editor_application.get_assets_folder_path());
     loader.resolve_meta_files(
-        &mut asset_database,
         information
             .get_editor_application()
             .get_assets_folder_path(),
@@ -592,11 +670,14 @@ pub fn load_assets_system(
             .get_artifacts_folder_path(),
     );
     loader.load_assets(
+        &mut commands,
         &mut asset_database,
         &vulkan_context_resource,
         &renderer_context_resource,
+        &renderer_resources,
         &mut descriptor_set_handle,
         &mut buffers_pool,
+        &mut materials_pool,
         &mut textures_pool,
         &mut mesh_buffers_pool,
     );

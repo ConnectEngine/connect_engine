@@ -62,7 +62,7 @@ impl<'a> DescriptorSetBuilder<'a> {
         mut self,
         device: Device,
         _allocator: Allocator,
-        buffers_pool: &mut BuffersPool,
+        buffers_pool: &mut BuffersPoolResource,
         descriptor_buffer_properties: &PhysicalDeviceDescriptorBufferPropertiesEXT,
         push_constant_ranges: &[PushConstantRange],
         shader_stages: ShaderStageFlags,

@@ -6,7 +6,7 @@ use connect_renderer::*;
 
 // TODO: Take into account if GlobalTransform really changed or not and update if necessary.
 pub fn collect_instance_objects_system(
-    materials_pool: Res<MaterialsPool>,
+    materials_pool: Res<MaterialsPoolResource>,
     mut renderer_resources: ResMut<RendererResources>,
     mesh_query: Query<(&GlobalTransform, &Mesh)>,
     mesh_buffers: ResMut<MeshBuffersPool>,

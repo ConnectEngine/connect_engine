@@ -10,7 +10,7 @@ pub fn prepare_default_textures_system(
     mut renderer_resources: ResMut<RendererResources>,
     mut descriptor_set_handle: ResMut<DescriptorSetHandle>,
     mut textures_pool: ResMut<TexturesPoolResource>,
-    mut buffers_pool: ResMut<BuffersPool>,
+    mut buffers_pool: ResMut<BuffersPoolResource>,
 ) {
     let magenta = &pack_unorm_4x8(Vec4::new(1.0, 0.0, 1.0, 1.0));
     let black = &pack_unorm_4x8(Vec4::new(0.0, 0.0, 0.0, 0.0));

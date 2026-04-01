@@ -100,7 +100,10 @@ impl BufferInfo {
 }
 
 impl BufferReference {
-    pub fn get_buffer<'a>(&'a self, buffers_pool: &'a BuffersPool) -> Option<&'a AllocatedBuffer> {
+    pub fn get_buffer<'a>(
+        &'a self,
+        buffers_pool: &'a BuffersPoolResource,
+    ) -> Option<&'a AllocatedBuffer> {
         buffers_pool.get_buffer(*self)
     }
 
@@ -110,7 +113,7 @@ impl BufferReference {
 }
 
 #[derive(Resource)]
-pub struct BuffersPool {
+pub struct BuffersPoolResource {
     device: Device,
     allocator: Allocator,
     slots: SlotMap<BufferKey, AllocatedBuffer>,
@@ -119,7 +122,7 @@ pub struct BuffersPool {
     transfer_queue: Queue,
 }
 
-impl BuffersPool {
+impl BuffersPoolResource {
     pub fn new(
         device: Device,
         allocator: Allocator,
