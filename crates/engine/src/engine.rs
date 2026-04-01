@@ -146,7 +146,6 @@ impl Engine {
         schedulers.entry(SchedulerGameInit);
         schedulers.entry(SchedulerGameUpdate);
 
-        world.add_observer(on_load_model::on_load_model_system);
         world.add_observer(on_spawn_model::on_spawn_mesh_system);
 
         world.insert_resource(Time::new());
