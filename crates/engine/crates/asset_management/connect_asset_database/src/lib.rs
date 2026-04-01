@@ -1,6 +1,6 @@
 use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
+    collections::HashMap,
+    path::{Path, PathBuf},
 };
 
 use bevy_ecs::{entity::Entity, resource::Resource};
@@ -19,7 +19,7 @@ pub struct AssetStatus {
 
 #[derive(Clone, Default, Hash, PartialEq, Eq)]
 pub struct Model<TKey: Key> {
-    pub assets_path_buf: PathBuf,
+    pub assets_folder_path_buf: PathBuf,
     // TODO: Handle material == None
     pub meshes_dependencies: Vec<MeshAsset<TKey>>,
     pub asset_status: AssetStatus,
@@ -57,9 +57,9 @@ pub struct AssetCategory<TKey: Key> {
 
 #[derive(Resource)]
 pub struct AssetDatabase {
-    pub models: HashSet<Model<MeshBufferKey>>,
-    pub materials: HashSet<MaterialAsset<MaterialKey>>,
-    pub textures: HashSet<TextureAsset<TextureKey>>,
+    pub models: Vec<Model<MeshBufferKey>>,
+    pub materials: Vec<MaterialAsset<MaterialKey>>,
+    pub textures: Vec<TextureAsset<TextureKey>>,
 }
 
 impl AssetDatabase {
@@ -71,23 +71,47 @@ impl AssetDatabase {
         }
     }
 
-    pub fn update_model_asset_entity(&mut self, asset_entity: Option<Entity>) {}
+    pub fn get_model_asset_entity(&self, name: &str) -> Entity {
+        let found_model_asset = self
+            .models
+            .iter()
+            .find(|model_asset| model_asset.assets_folder_path_buf.eq(name));
+
+        found_model_asset
+            .unwrap()
+            .asset_status
+            .asset_entity
+            .unwrap()
+    }
+
+    pub fn update_model_asset_entity(
+        &mut self,
+        model_asset_path: &Path,
+        asset_entity: Option<Entity>,
+    ) {
+        let found_model = self
+            .models
+            .iter_mut()
+            .find(|model| model.assets_folder_path_buf.eq(model_asset_path));
+
+        if let Some(found_model) = found_model {
+            found_model.asset_status.asset_entity = asset_entity;
+        }
+    }
 
     pub fn track_model(
         &mut self,
         meshes_dependencies: Vec<MeshAsset<MeshBufferKey>>,
         mut path_buf: PathBuf,
     ) {
-        path_buf = Self::trim_extensions_from_path(path_buf);
-
         println!("Tracking model: {}", path_buf.display());
         let model = Model {
-            assets_path_buf: path_buf,
+            assets_folder_path_buf: path_buf,
             meshes_dependencies,
             asset_status: AssetStatus::default(),
         };
 
-        self.models.insert(model);
+        self.models.push(model);
     }
 
     pub fn track_material(
@@ -96,8 +120,6 @@ impl AssetDatabase {
         mut path_buf: PathBuf,
         textures: Vec<TextureReference>,
     ) {
-        path_buf = Self::trim_extensions_from_path(path_buf);
-
         println!("Tracking material: {}", path_buf.display());
         let material = MaterialAsset {
             key: material_reference.key,
@@ -106,12 +128,10 @@ impl AssetDatabase {
             asset_status: AssetStatus::default(),
         };
 
-        self.materials.insert(material);
+        self.materials.push(material);
     }
 
     pub fn track_texture(&mut self, texture_reference: TextureReference, mut path_buf: PathBuf) {
-        path_buf = Self::trim_extensions_from_path(path_buf);
-
         println!("Tracking texture: {}", path_buf.display());
         let texture = TextureAsset {
             key: texture_reference.key,
@@ -119,14 +139,6 @@ impl AssetDatabase {
             asset_status: AssetStatus::default(),
         };
 
-        self.textures.insert(texture);
-    }
-
-    fn trim_extensions_from_path(mut path_buf: PathBuf) -> PathBuf {
-        while path_buf.extension().is_some() {
-            path_buf.set_extension("");
-        }
-
-        path_buf
+        self.textures.push(texture);
     }
 }

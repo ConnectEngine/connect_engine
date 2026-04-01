@@ -153,6 +153,7 @@ impl Loader {
 
             let mut spawn_event = SpawnEvent::default();
             spawn_event.parent_entity = None;
+            spawn_event.asset_path_buf = model_to_load.assets_path_buf.clone();
             let mut spawn_event_record = SpawnEventRecord::default();
 
             archived_serialized_model

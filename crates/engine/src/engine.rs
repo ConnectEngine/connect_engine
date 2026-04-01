@@ -2,7 +2,6 @@ mod ecs;
 mod setup;
 mod utils;
 
-use connect_asset_database::AssetDatabase;
 use connect_renderer::*;
 use ecs::*;
 
@@ -34,6 +33,8 @@ use crate::{
 pub use audio::*;
 pub use components::camera::{Camera, ClippingPlanes};
 pub use components::time::Time;
+// TODO: Later make unified access to the assets (for example, `Assets` System Param or something like that).
+pub use connect_asset_database::*;
 pub use connect_loader::events::LoadModelEvent;
 pub use connect_math;
 pub use connect_shared::LocalTransform;

@@ -1,4 +1,5 @@
 use bevy_ecs::{
+    entity_disabling::Disabled,
     hierarchy::ChildOf,
     name::Name,
     observer::On,
@@ -10,6 +11,8 @@ use connect_renderer::*;
 
 use connect_loader::events::*;
 use connect_shared::*;
+
+use crate::engine::ecs::components::tags::ModelTag;
 
 pub fn on_spawn_mesh_system(
     spawn_event: On<SpawnEvent>,
@@ -23,14 +26,26 @@ pub fn on_spawn_mesh_system(
     };
     let scene_global_transform = GlobalTransform(scene_transform.local_to_world_matrix());
 
-    let mut scene_entity_cmds =
-        commands.spawn((Name::new("Scene"), scene_global_transform, scene_transform));
+    let mut scene_entity_commands = commands.spawn((
+        Name::new(std::format!(
+            "model_asset_{}",
+            // TODO: Later use model name, instead.
+            spawn_event.asset_path_buf.display()
+        )),
+        ModelTag {
+            path_buf: spawn_event.asset_path_buf.clone(),
+        },
+        Disabled,
+        scene_global_transform,
+        scene_transform,
+    ));
 
     if let Some(parent_entity_id) = spawn_event.parent_entity {
-        scene_entity_cmds.insert(ChildOf(parent_entity_id));
+        scene_entity_commands.insert(ChildOf(parent_entity_id));
     };
 
-    let scene_entity_id = scene_entity_cmds.id();
+    let scene_entity_id = scene_entity_commands.id();
+    asset_database.update_model_asset_entity(&spawn_event.asset_path_buf, Some(scene_entity_id));
 
     let mut spawned_entities = Vec::with_capacity(spawn_event.spawn_records.len());
 

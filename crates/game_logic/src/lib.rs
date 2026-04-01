@@ -90,7 +90,37 @@ enum AsteroidRotationAxis {
     Z,
 }
 
-struct CloneHierarchyCommand {
+struct CloneHierarchyCommand<Tag: Component> {
+    pub source: Entity,
+    pub position: Vec3,
+    pub scale: Vec3,
+    pub rotation: Vec3,
+    pub tag: Tag,
+}
+
+impl<Tag> Command for CloneHierarchyCommand<Tag>
+where
+    Tag: Component,
+{
+    fn apply(self, world: &mut World) {
+        let mut entity_cloner_builder = EntityCloner::build_opt_out(world);
+        entity_cloner_builder.linked_cloning(true);
+        let mut entity_cloner = entity_cloner_builder.finish();
+
+        let entity = entity_cloner.spawn_clone(world, self.source);
+        let mut entity = world.entity_mut(entity);
+        let mut entity_transform = entity.get_mut::<LocalTransform>().unwrap();
+        entity_transform.local_position = self.position;
+        entity_transform.local_scale = self.scale;
+        entity_transform.set_local_euler_angles(self.rotation);
+
+        entity.insert(self.tag);
+
+        entity.remove_recursive::<Children, Disabled>();
+    }
+}
+
+struct AsteroidCloneHierarchyCommand {
     pub source: Entity,
     pub position: Vec3,
     pub scale: Vec3,
@@ -98,7 +128,7 @@ struct CloneHierarchyCommand {
     pub asteroid_rotation_axis: AsteroidRotationAxis,
 }
 
-impl Command for CloneHierarchyCommand {
+impl Command for AsteroidCloneHierarchyCommand {
     fn apply(self, world: &mut World) {
         let mut entity_cloner_builder = EntityCloner::build_opt_out(world);
         entity_cloner_builder.linked_cloning(true);
@@ -156,30 +186,25 @@ fn fire_from_gun(
     }
 }
 
-fn spawn_planet(mut commands: Commands) {
-    // TODO: Deduplicate and simplify.
-    let mut exe_path = std::env::current_exe().unwrap();
-
-    exe_path.pop();
-    exe_path.pop();
-    exe_path.pop();
-
+fn spawn_planet(
+    mut commands: Commands,
+    mut random: ResMut<Random>,
+    asset_database: Res<AssetDatabase>,
+) {
     let planet_scale = 20.0;
     let mut planet_transform = LocalTransform::IDENTITY;
     planet_transform.local_scale *= planet_scale;
 
-    let planet_entity = commands.spawn((PlanetTag, planet_transform));
-    let planet_entity_id = planet_entity.id();
-
-    commands.trigger(LoadModelEvent {
-        path: PathBuf::from(std::format!(
-            "{}/assets/models/planet.glb",
-            exe_path.as_os_str().display()
-        )),
-        parent_entity: Some(planet_entity_id),
+    let planet_model_asset_entity = asset_database.get_model_asset_entity("models/planet.glb");
+    commands.queue(CloneHierarchyCommand {
+        source: planet_model_asset_entity,
+        position: Vec3::default(),
+        scale: vec3(planet_scale, planet_scale, planet_scale),
+        rotation: Vec3::default(),
+        tag: PlanetTag,
     });
 
-    let asteroid = 1.0;
+    /*   let asteroid = 1.0;
     let mut asteroid_transform = LocalTransform::IDENTITY;
     asteroid_transform.local_scale *= asteroid;
 
@@ -192,7 +217,7 @@ fn spawn_planet(mut commands: Commands) {
             exe_path.as_os_str().display()
         )),
         parent_entity: Some(asteroid_entity_id),
-    });
+    }); */
 }
 
 fn spawn_asteroids(
@@ -238,7 +263,7 @@ fn spawn_asteroids(
                 _ => panic!("Only X, Y, Z axis supported"),
             };
 
-            commands.queue(CloneHierarchyCommand {
+            commands.queue(AsteroidCloneHierarchyCommand {
                 source: asteroid_prefab_entity,
                 position: planet_transform.local_position + position,
                 scale: vec3(scale, scale, scale),
