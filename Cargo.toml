@@ -108,6 +108,6 @@ debug = 0
 [profile.release]
 opt-level = 3
 # FIXME: Windows doesn't support LTO, when we use dynamic library linking. Windows SUCKS.
-# In future, maybe add FFI-Boundary to the user space, but it's drastically make verbose API.
+# In future, will be remade system to use the "Export Tamplate" pattern, where we have an Editor Engine version and a Standalone Engine version.
 # lto = true
 codegen-units = 1
