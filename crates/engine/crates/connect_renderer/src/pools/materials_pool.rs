@@ -3,7 +3,7 @@ use bevy_ecs::resource::Resource;
 use connect_math::*;
 use connect_shared::MaterialKey;
 use slotmap::SlotMap;
-use vulkanite::vk::DeviceAddress;
+use vulkan::vk::DeviceAddress;
 
 // TODO: MOVE TO SOME PLACE
 use bytemuck::{Pod, Zeroable};

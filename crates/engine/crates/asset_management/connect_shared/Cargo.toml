@@ -22,7 +22,7 @@ fast_image_resize = { workspace = true }
 meshopt = { workspace = true }
 padding-struct = { workspace = true }
 slotmap = { workspace = true }
-vulkanite = { workspace = true }
+vulkan = { workspace = true }
 
 uuid = { workspace = true }
 uuid-simd = { workspace = true }

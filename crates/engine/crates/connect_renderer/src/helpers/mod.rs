@@ -1,4 +1,4 @@
-use vulkanite::vk::{rs::*, *};
+use vulkan::{Device, vk::*};
 
 #[derive(Clone, Copy)]
 pub struct ShaderInfo<'a> {
@@ -12,11 +12,14 @@ pub struct ShaderInfo<'a> {
 
 pub fn create_command_buffer_begin_info<'a>(
     flags: CommandBufferUsageFlags,
-) -> CommandBufferBeginInfo<'a> {
-    CommandBufferBeginInfo::default().flags(flags)
+) -> CommandBufferBeginInfo {
+    CommandBufferBeginInfoBuilder::default()
+        .flags(flags)
+        .build()
 }
 
 pub fn transition_image(
+    device: &vulkan::Device,
     command_buffer: CommandBuffer,
     image: Image,
     old_image_layout: ImageLayout,
@@ -28,7 +31,7 @@ pub fn transition_image(
     image_aspect_flags: ImageAspectFlags,
     mip_levels_count: u32,
 ) {
-    let mut image_memory_barrier = ImageMemoryBarrier2::default()
+    let image_memory_barrier_builder = ImageMemoryBarrier2Builder::default()
         .src_stage_mask(src_stage_mask)
         .src_access_mask(src_access_mask)
         .dst_stage_mask(dst_stage_mask)
@@ -40,12 +43,16 @@ pub fn transition_image(
             mip_levels_count,
         ));
 
-    image_memory_barrier = image_memory_barrier.image(&image);
+    let image_memory_barrier = image_memory_barrier_builder.image(image).build();
 
     let image_memory_barriers = [image_memory_barrier];
-    let dependency_info = DependencyInfo::default().image_memory_barriers(&image_memory_barriers);
+    let dependency_info = DependencyInfoBuilder::default()
+        .image_memory_barriers(&image_memory_barriers)
+        .build();
 
-    command_buffer.pipeline_barrier2(&dependency_info);
+    unsafe {
+        device.cmd_pipeline_barrier2(command_buffer, &dependency_info);
+    }
 }
 
 pub fn image_subresource_range(
@@ -63,31 +70,34 @@ pub fn image_subresource_range(
 
 pub fn semaphore_submit_info<'a>(
     stage_mask: PipelineStageFlags2,
-    semaphore: &'a Semaphore,
-) -> SemaphoreSubmitInfo<'a> {
-    SemaphoreSubmitInfo::default()
+    semaphore: Semaphore,
+) -> SemaphoreSubmitInfo {
+    SemaphoreSubmitInfoBuilder::default()
         .semaphore(semaphore)
         .stage_mask(stage_mask)
+        .build()
 }
 
-pub fn command_buffer_submit_info<'a>(
-    command_buffer: &'a CommandBuffer,
-) -> CommandBufferSubmitInfo<'a> {
-    CommandBufferSubmitInfo::default().command_buffer(command_buffer)
+pub fn command_buffer_submit_info<'a>(command_buffer: CommandBuffer) -> CommandBufferSubmitInfo {
+    CommandBufferSubmitInfoBuilder::default()
+        .command_buffer(command_buffer)
+        .build()
 }
 
 pub fn submit_info<'a>(
     command_buffer_submit_infos: &'a [CommandBufferSubmitInfo],
     wait_semaphores: &'a [SemaphoreSubmitInfo],
     signal_semaphores: &'a [SemaphoreSubmitInfo],
-) -> SubmitInfo2<'a> {
-    SubmitInfo2::default()
+) -> SubmitInfo2 {
+    SubmitInfo2Builder::default()
         .wait_semaphore_infos(wait_semaphores)
         .signal_semaphore_infos(signal_semaphores)
         .command_buffer_infos(command_buffer_submit_infos)
+        .build()
 }
 
 pub fn copy_image_to_image(
+    device: &Device,
     command_buffer: CommandBuffer,
     source_image: Image,
     destination_image: Image,
@@ -112,31 +122,35 @@ pub fn copy_image_to_image(
     ];
 
     let src_subresource = ImageSubresourceLayers {
-        aspect_mask: ImageAspectFlags::Color,
+        aspect_mask: ImageAspectFlags::COLOR,
         mip_level: Default::default(),
         base_array_layer: Default::default(),
         layer_count: 1,
     };
     let dst_subresource = ImageSubresourceLayers {
-        aspect_mask: ImageAspectFlags::Color,
+        aspect_mask: ImageAspectFlags::COLOR,
         mip_level: Default::default(),
         base_array_layer: Default::default(),
         layer_count: 1,
     };
-    let blit_region = ImageBlit2::default()
+    let blit_region = ImageBlit2Builder::default()
         .src_subresource(src_subresource)
         .src_offsets(src_offsets)
         .dst_subresource(dst_subresource)
-        .dst_offsets(dst_offsets);
+        .dst_offsets(dst_offsets)
+        .build();
 
     let regions = [blit_region];
-    let image_blit_info = BlitImageInfo2::default()
-        .src_image_layout(ImageLayout::General)
-        .dst_image_layout(ImageLayout::General)
-        .filter(Filter::Linear)
-        .src_image(&source_image)
-        .dst_image(&destination_image)
-        .regions(&regions);
+    let image_blit_info = BlitImageInfo2Builder::default()
+        .src_image_layout(ImageLayout::GENERAL)
+        .dst_image_layout(ImageLayout::GENERAL)
+        .filter(Filter::LINEAR)
+        .src_image(source_image)
+        .dst_image(destination_image)
+        .regions(&regions)
+        .build();
 
-    command_buffer.blit_image2(&image_blit_info);
+    unsafe {
+        device.cmd_blit_image2(command_buffer, &image_blit_info);
+    }
 }

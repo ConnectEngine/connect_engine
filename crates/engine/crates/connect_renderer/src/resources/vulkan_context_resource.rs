@@ -1,24 +1,19 @@
+use std::sync::Arc;
+
 use bevy_ecs::resource::Resource;
-use vma::Allocator;
-use vulkanite::vk::{
-    AccessFlags2, BufferImageCopy, CommandBufferBeginInfo, CommandBufferUsageFlags,
-    CommandPoolResetFlags, Extent3D, ImageLayout, ImageSubresourceLayers, PipelineStageFlags2,
-    SubmitInfo, SurfaceFormatKHR,
-    rs::{
-        DebugUtilsMessengerEXT, Device, Instance, PhysicalDevice, Queue, SurfaceKHR, SwapchainKHR,
-    },
-};
+use vulkan::{Device, Instance, vk::*};
+use vulkan_vma::*;
 
 use crate::{AllocatedImage, BuffersPoolResource, UploadContext, transition_image};
 
 #[derive(Resource)]
 pub struct VulkanContextResource {
-    pub instance: Instance,
+    pub instance: Arc<Instance>,
     pub debug_utils_messenger: Option<DebugUtilsMessengerEXT>,
     pub surface: SurfaceKHR,
-    pub device: Device,
+    pub device: Arc<Device>,
     pub physical_device: PhysicalDevice,
-    pub allocator: Allocator,
+    pub allocator: Arc<Allocator>,
     pub graphics_queue: Queue,
     pub transfer_queue: Queue,
     pub queue_family_index: usize,
@@ -39,36 +34,40 @@ impl VulkanContextResource {
         let command_buffer = upload_context.command_group.command_buffer;
 
         let command_buffer_begin_info = CommandBufferBeginInfo {
-            flags: CommandBufferUsageFlags::OneTimeSubmit,
+            flags: CommandBufferUsageFlags::ONE_TIME_SUBMIT,
             ..Default::default()
         };
 
-        command_buffer.begin(&command_buffer_begin_info).unwrap();
+        unsafe {
+            self.device
+                .begin_command_buffer(command_buffer, &command_buffer_begin_info)
+                .unwrap();
+        }
 
         let size = match size {
             Some(size) => size,
             None => (texture_metadata.width * texture_metadata.height * 8) as usize,
         };
 
-        let staging_buffer_reference =
-            unsafe { &*(&buffers_pool.get_staging_buffer_reference() as *const _) };
+        let staging_buffer_reference = buffers_pool.get_staging_buffer_reference();
         unsafe {
             buffers_pool.transfer_data_to_buffer_raw(
-                *staging_buffer_reference,
+                staging_buffer_reference,
                 data_to_copy,
                 size as _,
             );
         }
 
         transition_image(
+            &self.device,
             command_buffer,
             allocated_image.image,
-            ImageLayout::Undefined,
-            ImageLayout::General,
-            PipelineStageFlags2::None,
-            PipelineStageFlags2::Copy,
-            AccessFlags2::None,
-            AccessFlags2::TransferWrite,
+            ImageLayout::UNDEFINED,
+            ImageLayout::GENERAL,
+            PipelineStageFlags2::NONE,
+            PipelineStageFlags2::COPY,
+            AccessFlags2::NONE,
+            AccessFlags2::TRANSFER_WRITE,
             allocated_image.subresource_range.aspect_mask,
             texture_metadata.mip_levels_count,
         );
@@ -113,52 +112,62 @@ impl VulkanContextResource {
             buffer_image_copies.push(buffer_image_copy);
         }
 
-        upload_context
-            .command_group
-            .command_buffer
-            .copy_buffer_to_image(
+        unsafe {
+            self.device.cmd_copy_buffer_to_image(
+                upload_context.command_group.command_buffer,
                 buffers_pool
-                    .get_buffer(*staging_buffer_reference)
+                    .get_buffer(staging_buffer_reference)
                     .unwrap()
                     .buffer,
                 allocated_image.image,
-                ImageLayout::General,
+                ImageLayout::GENERAL,
                 &buffer_image_copies,
             );
+        }
 
         transition_image(
+            &self.device,
             command_buffer,
             allocated_image.image,
-            ImageLayout::General,
-            ImageLayout::General,
-            PipelineStageFlags2::Copy,
-            PipelineStageFlags2::FragmentShader,
-            AccessFlags2::TransferWrite,
-            AccessFlags2::ShaderSampledRead,
+            ImageLayout::GENERAL,
+            ImageLayout::GENERAL,
+            PipelineStageFlags2::COPY,
+            PipelineStageFlags2::FRAGMENT_SHADER,
+            AccessFlags2::TRANSFER_WRITE,
+            AccessFlags2::SHADER_SAMPLED_READ,
             allocated_image.subresource_range.aspect_mask,
             texture_metadata.mip_levels_count,
         );
 
-        command_buffer.end().unwrap();
+        unsafe {
+            self.device.end_command_buffer(command_buffer).unwrap();
+        }
 
         let command_buffers = [command_buffer];
-        let queue_submits = [SubmitInfo::default().command_buffers(command_buffers.as_slice())];
+        let queue_submits =
+            [SubmitInfoBuilder::default().command_buffers(command_buffers.as_slice())];
 
-        self.transfer_queue
-            .submit(&queue_submits, Some(upload_context.command_group.fence))
-            .unwrap();
+        unsafe {
+            self.device
+                .queue_submit(
+                    self.transfer_queue,
+                    &queue_submits,
+                    upload_context.command_group.fence,
+                )
+                .unwrap();
 
-        let fences_to_wait = [upload_context.command_group.fence];
-        self.device
-            .wait_for_fences(fences_to_wait.as_slice(), true, u64::MAX)
-            .unwrap();
-        self.device.reset_fences(fences_to_wait.as_slice()).unwrap();
+            let fences_to_wait = [upload_context.command_group.fence];
+            self.device
+                .wait_for_fences(fences_to_wait.as_slice(), true, u64::MAX)
+                .unwrap();
+            self.device.reset_fences(fences_to_wait.as_slice()).unwrap();
 
-        self.device
-            .reset_command_pool(
-                upload_context.command_group.command_pool,
-                CommandPoolResetFlags::ReleaseResources,
-            )
-            .unwrap();
+            self.device
+                .reset_command_pool(
+                    upload_context.command_group.command_pool,
+                    CommandPoolResetFlags::RELEASE_RESOURCES,
+                )
+                .unwrap();
+        }
     }
 }

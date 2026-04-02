@@ -1,8 +1,5 @@
 use bevy_ecs::resource::Resource;
-use vulkanite::vk::{
-    Extent2D,
-    rs::{Image, ImageView, Semaphore},
-};
+use vulkan::vk::*;
 
 use crate::{CommandGroup, TextureReference};
 

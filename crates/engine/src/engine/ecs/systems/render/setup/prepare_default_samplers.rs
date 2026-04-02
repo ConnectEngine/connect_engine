@@ -1,6 +1,6 @@
 use bevy_ecs::system::{Res, ResMut};
 use connect_renderer::*;
-use vulkanite::vk::*;
+use vulkan::vk::*;
 
 pub fn prepare_default_samplers_system(
     mut renderer_resources: ResMut<RendererResources>,
@@ -9,7 +9,7 @@ pub fn prepare_default_samplers_system(
     mut samplers_pool: ResMut<SamplersPool>,
 ) {
     let default_sampler_reference =
-        samplers_pool.create_sampler(Filter::Linear, SamplerAddressMode::Repeat, true);
+        samplers_pool.create_sampler(Filter::LINEAR, SamplerAddressMode::REPEAT, true);
     renderer_resources.default_sampler_reference = default_sampler_reference;
 
     let sampler = samplers_pool

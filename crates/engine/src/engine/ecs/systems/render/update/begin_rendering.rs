@@ -1,21 +1,17 @@
 use bevy_ecs::system::{Res, ResMut};
-use vulkanite::{
-    Handle,
-    vk::{
-        rs::{CommandBuffer, PipelineLayout},
-        *,
-    },
-};
+use vulkan::{Device, vk::*};
 
 use connect_renderer::*;
 
 pub fn begin_rendering_system(
+    vulkan_context_resource: Res<VulkanContextResource>,
     render_context: Res<RendererContextResource>,
     renderer_resources: Res<RendererResources>,
     descriptor_set_handle: Res<DescriptorSetHandle>,
     textures_pool: ResMut<TexturesPoolResource>,
     mut frame_context: ResMut<FrameContextResource>,
 ) {
+    let device = vulkan_context_resource.device.as_ref();
     let frame_data = render_context.get_current_frame_data();
 
     let command_buffer = frame_data.command_group.command_buffer;
@@ -24,9 +20,13 @@ pub fn begin_rendering_system(
     frame_context.depth_texture_reference = frame_data.depth_texture_reference;
 
     let command_buffer_begin_info =
-        create_command_buffer_begin_info(CommandBufferUsageFlags::OneTimeSubmit);
+        create_command_buffer_begin_info(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
-    command_buffer.begin(&command_buffer_begin_info).unwrap();
+    unsafe {
+        device
+            .begin_command_buffer(command_buffer, &command_buffer_begin_info)
+            .unwrap();
+    }
 
     let draw_image = textures_pool
         .get_image(frame_context.draw_texture_reference)
@@ -36,14 +36,15 @@ pub fn begin_rendering_system(
         .unwrap();
 
     transition_image(
+        device,
         command_buffer,
         draw_image.image,
-        ImageLayout::Undefined,
-        ImageLayout::General,
-        PipelineStageFlags2::Blit,
-        PipelineStageFlags2::ComputeShader,
-        AccessFlags2::TransferRead,
-        AccessFlags2::ShaderStorageWrite,
+        ImageLayout::UNDEFINED,
+        ImageLayout::GENERAL,
+        PipelineStageFlags2::BLIT,
+        PipelineStageFlags2::COMPUTE_SHADER,
+        AccessFlags2::TRANSFER_READ,
+        AccessFlags2::SHADER_STORAGE_WRITE,
         draw_image.image_aspect_flags,
         frame_context
             .draw_texture_reference
@@ -51,14 +52,15 @@ pub fn begin_rendering_system(
             .mip_levels_count,
     );
     transition_image(
+        device,
         command_buffer,
         depth_image.image,
-        ImageLayout::Undefined,
-        ImageLayout::General,
-        PipelineStageFlags2::LateFragmentTests,
-        PipelineStageFlags2::EarlyFragmentTests,
-        AccessFlags2::DepthStencilAttachmentWrite,
-        AccessFlags2::DepthStencilAttachmentWrite,
+        ImageLayout::UNDEFINED,
+        ImageLayout::GENERAL,
+        PipelineStageFlags2::LATE_FRAGMENT_TESTS,
+        PipelineStageFlags2::EARLY_FRAGMENT_TESTS,
+        AccessFlags2::DEPTH_STENCIL_ATTACHMENT_WRITE,
+        AccessFlags2::DEPTH_STENCIL_ATTACHMENT_WRITE,
         depth_image.image_aspect_flags,
         frame_context
             .depth_texture_reference
@@ -101,18 +103,21 @@ pub fn begin_rendering_system(
     let pipeline_layout = descriptor_set_handle.get_pipeline_layout();
     let descriptor_buffer_info = descriptor_set_handle.get_buffer_info();
 
-    command_buffer.push_constants(
-        pipeline_layout,
-        ShaderStageFlags::MeshEXT
-            | ShaderStageFlags::Fragment
-            | ShaderStageFlags::Compute
-            | ShaderStageFlags::TaskEXT,
-        Default::default(),
-        size_of::<GraphicsPushConstant>() as u32,
-        &mesh_push_constant as *const _ as _,
-    );
+    unsafe {
+        device.cmd_push_constants(
+            command_buffer,
+            pipeline_layout,
+            ShaderStageFlags::MESH_EXT
+                | ShaderStageFlags::FRAGMENT
+                | ShaderStageFlags::COMPUTE
+                | ShaderStageFlags::TASK_EXT,
+            Default::default(),
+            bytemuck::bytes_of(&mesh_push_constant),
+        );
+    }
 
     draw_gradient(
+        device,
         renderer_resources.as_ref(),
         command_buffer,
         draw_image_extent2d,
@@ -121,14 +126,15 @@ pub fn begin_rendering_system(
     );
 
     transition_image(
+        device,
         command_buffer,
         draw_image.image,
-        ImageLayout::General,
-        ImageLayout::General,
-        PipelineStageFlags2::ComputeShader,
-        PipelineStageFlags2::ColorAttachmentOutput,
-        AccessFlags2::ShaderStorageWrite,
-        AccessFlags2::ColorAttachmentRead,
+        ImageLayout::GENERAL,
+        ImageLayout::GENERAL,
+        PipelineStageFlags2::COMPUTE_SHADER,
+        PipelineStageFlags2::COLOR_ATTACHMENT_OUTPUT,
+        AccessFlags2::SHADER_STORAGE_WRITE,
+        AccessFlags2::COLOR_ATTACHMENT_READ,
         draw_image.image_aspect_flags,
         frame_context
             .draw_texture_reference
@@ -137,19 +143,19 @@ pub fn begin_rendering_system(
     );
 
     let color_attachment_infos = [RenderingAttachmentInfo {
-        image_view: Some(draw_image.image_view.borrow()),
-        image_layout: ImageLayout::General,
-        resolve_mode: ResolveModeFlags::None,
-        load_op: AttachmentLoadOp::Load,
-        store_op: AttachmentStoreOp::Store,
+        image_view: draw_image.image_view,
+        image_layout: ImageLayout::GENERAL,
+        resolve_mode: ResolveModeFlags::NONE,
+        load_op: AttachmentLoadOp::LOAD,
+        store_op: AttachmentStoreOp::STORE,
         ..Default::default()
     }];
     let depth_attachment_info = &RenderingAttachmentInfo {
-        image_view: Some(depth_image.image_view.borrow()),
-        image_layout: ImageLayout::General,
-        resolve_mode: ResolveModeFlags::None,
-        load_op: AttachmentLoadOp::Clear,
-        store_op: AttachmentStoreOp::Store,
+        image_view: depth_image.image_view,
+        image_layout: ImageLayout::GENERAL,
+        resolve_mode: ResolveModeFlags::NONE,
+        load_op: AttachmentLoadOp::CLEAR,
+        store_op: AttachmentStoreOp::STORE,
         clear_value: ClearValue {
             depth_stencil: Default::default(),
         },
@@ -163,102 +169,132 @@ pub fn begin_rendering_system(
         },
         layer_count: 1,
         color_attachment_count: color_attachment_infos.len() as _,
-        p_color_attachments: color_attachment_infos.as_ptr(),
-        p_depth_attachment: depth_attachment_info as *const _,
+        color_attachments: color_attachment_infos.as_ptr(),
+        depth_attachment: depth_attachment_info as *const _,
         ..Default::default()
     };
 
-    command_buffer.begin_rendering(&rendering_info);
+    unsafe {
+        device.cmd_begin_rendering(command_buffer, &rendering_info);
+    }
 
-    let viewports = Viewport {
+    let viewports = [Viewport {
         width: draw_image_extent2d.width as _,
         height: -(draw_image_extent2d.height as f32),
         min_depth: 0.0,
         max_depth: 1.0,
         y: draw_image_extent2d.height as f32,
         ..Default::default()
-    };
-    let scissors = Rect2D {
+    }];
+    let scissors = [Rect2D {
         extent: draw_image_extent2d,
         ..Default::default()
-    };
-
-    command_buffer.set_viewport_with_count(&viewports);
-    command_buffer.set_scissor_with_count(&scissors);
-
-    command_buffer.set_cull_mode(CullModeFlags::Back);
-    command_buffer.set_front_face(FrontFace::CounterClockwise);
-    command_buffer.set_primitive_topology(PrimitiveTopology::TriangleList);
-    command_buffer.set_polygon_mode_ext(PolygonMode::Fill);
-    command_buffer.set_primitive_restart_enable(false);
-    command_buffer.set_rasterizer_discard_enable(false);
-    command_buffer.set_rasterization_samples_ext(SampleCountFlags::Count1);
-
-    command_buffer.set_depth_test_enable(true);
-    command_buffer.set_depth_bias_enable(false);
-    command_buffer.set_depth_compare_op(CompareOp::GreaterOrEqual);
-    command_buffer.set_depth_bounds_test_enable(false);
-    command_buffer.set_depth_bounds(0.0, 1.0);
-    command_buffer.set_stencil_test_enable(false);
-
-    command_buffer.set_alpha_to_coverage_enable_ext(false);
-    command_buffer.set_sample_mask_ext(SampleCountFlags::Count1, &[SampleMask::MAX]);
-
-    let color_component_flags = [ColorComponentFlags::all()];
-    command_buffer.set_color_write_mask_ext(Default::default(), &color_component_flags);
-
-    let vertex_bindings_descriptions = [];
-    let vertex_attributes = [];
-    command_buffer.set_vertex_input_ext(&vertex_bindings_descriptions, &vertex_attributes);
-
-    let shader_stages = [ShaderStageFlags::Vertex];
-    use vulkanite::Dispatcher;
+    }];
 
     unsafe {
-        let dispatcher = command_buffer.get_dispatcher();
-        let vulkan_command = dispatcher
-            .get_command_dispatcher()
-            .cmd_bind_shaders_ext
-            .get();
-        vulkan_command(
-            Some(command_buffer.borrow()),
-            1,
-            shader_stages.as_slice().as_ptr().cast(),
-            std::ptr::null(),
+        device.cmd_set_viewport_with_count(command_buffer, &viewports);
+        device.cmd_set_scissor_with_count(command_buffer, &scissors);
+
+        device.cmd_set_cull_mode(command_buffer, CullModeFlags::BACK);
+        device.cmd_set_front_face(command_buffer, FrontFace::COUNTER_CLOCKWISE);
+        device.cmd_set_primitive_topology(command_buffer, PrimitiveTopology::TRIANGLE_LIST);
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_polygon_mode_ext(
+            device,
+            command_buffer,
+            PolygonMode::FILL,
+        );
+        device.cmd_set_primitive_restart_enable(command_buffer, false);
+        device.cmd_set_rasterizer_discard_enable(command_buffer, false);
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_rasterization_samples_ext(
+            device,
+            command_buffer,
+            SampleCountFlags::_1,
+        );
+
+        device.cmd_set_depth_test_enable(command_buffer, true);
+        device.cmd_set_depth_bias_enable(command_buffer, false);
+        device.cmd_set_depth_compare_op(command_buffer, CompareOp::GREATER_OR_EQUAL);
+        device.cmd_set_depth_bounds_test_enable(command_buffer, false);
+        device.cmd_set_depth_bounds(command_buffer, 0.0, 1.0);
+        device.cmd_set_stencil_test_enable(command_buffer, false);
+
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_alpha_to_coverage_enable_ext(
+            device,
+            command_buffer,
+            false,
+        );
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_sample_mask_ext(
+            device,
+            command_buffer,
+            SampleCountFlags::_1,
+            Some(&SampleMask::MAX),
+        );
+    }
+
+    let color_component_flags = [ColorComponentFlags::all()];
+    unsafe {
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_color_write_mask_ext(
+            device,
+            command_buffer,
+            Default::default(),
+            &color_component_flags,
+        );
+    }
+
+    let vertex_bindings_descriptions: [VertexInputBindingDescription2EXT; 0] = [];
+    let vertex_attributes: [VertexInputAttributeDescription2EXT; 0] = [];
+    unsafe {
+        vulkan::vk::ExtShaderObjectExtensionDeviceCommands::cmd_set_vertex_input_ext(
+            device,
+            command_buffer,
+            &vertex_bindings_descriptions,
+            &vertex_attributes,
         );
     }
 
     let shader_stages = [
+        ShaderStageFlags::VERTEX,
         renderer_resources.task_shader_object.stage,
         renderer_resources.mesh_shader_object.stage,
         renderer_resources.fragment_shader_object.stage,
     ];
     let shaders = [
-        *renderer_resources.task_shader_object.shader.unwrap(),
-        *renderer_resources.mesh_shader_object.shader.unwrap(),
-        *renderer_resources.fragment_shader_object.shader.unwrap(),
+        ShaderEXT::null(),
+        renderer_resources.task_shader_object.shader,
+        renderer_resources.mesh_shader_object.shader,
+        renderer_resources.fragment_shader_object.shader,
     ];
 
-    let descriptor_binding_info = DescriptorBufferBindingInfoEXT::default()
-        .usage(BufferUsageFlags::ResourceDescriptorBufferEXT)
-        .address(descriptor_buffer_info.device_address);
+    let descriptor_binding_info = DescriptorBufferBindingInfoEXTBuilder::default()
+        .usage(BufferUsageFlags::RESOURCE_DESCRIPTOR_BUFFER_EXT)
+        .address(descriptor_buffer_info.device_address)
+        .build();
     let descriptor_binding_infos = [descriptor_binding_info];
-    command_buffer.bind_descriptor_buffers_ext(&descriptor_binding_infos);
+    unsafe {
+        device.cmd_bind_descriptor_buffers_ext(command_buffer, &descriptor_binding_infos);
+    }
 
     let buffer_indices = [0];
     let offsets = [0];
-    command_buffer.set_descriptor_buffer_offsets_ext(
-        PipelineBindPoint::Graphics,
-        pipeline_layout,
-        Default::default(),
-        &buffer_indices,
-        &offsets,
-    );
 
-    command_buffer.bind_shaders_ext(shader_stages.as_slice(), shaders.as_slice());
+    unsafe {
+        device.cmd_set_descriptor_buffer_offsets_ext(
+            command_buffer,
+            PipelineBindPoint::GRAPHICS,
+            pipeline_layout,
+            Default::default(),
+            &buffer_indices,
+            &offsets,
+        );
+    }
+
+    unsafe {
+        device.cmd_bind_shaders_ext(command_buffer, shader_stages.as_slice(), shaders.as_slice());
+    }
 }
 
 fn draw_gradient(
+    device: &Device,
     renderer_resources: &RendererResources,
     command_buffer: CommandBuffer,
     draw_extent: Extent2D,
@@ -268,30 +304,41 @@ fn draw_gradient(
     let gradient_compute_shader_object = renderer_resources.gradient_compute_shader_object;
 
     let stages = [gradient_compute_shader_object.stage];
-    let shaders = [gradient_compute_shader_object.shader.unwrap()];
+    let shaders = [gradient_compute_shader_object.shader];
 
-    command_buffer.bind_shaders_ext(stages.as_slice(), shaders.as_slice());
+    unsafe {
+        device.cmd_bind_shaders_ext(command_buffer, stages.as_slice(), shaders.as_slice());
+    }
 
-    let descriptor_binding_info = DescriptorBufferBindingInfoEXT::default()
-        .usage(BufferUsageFlags::ResourceDescriptorBufferEXT)
-        .address(descriptor_buffer_device_address);
+    let descriptor_binding_info = DescriptorBufferBindingInfoEXTBuilder::default()
+        .usage(BufferUsageFlags::RESOURCE_DESCRIPTOR_BUFFER_EXT)
+        .address(descriptor_buffer_device_address)
+        .build();
 
     let descriptor_binding_infos = [descriptor_binding_info];
-    command_buffer.bind_descriptor_buffers_ext(&descriptor_binding_infos);
+    unsafe {
+        device.cmd_bind_descriptor_buffers_ext(command_buffer, &descriptor_binding_infos);
+    }
 
     let buffer_indices = [0];
     let offsets = [0];
-    command_buffer.set_descriptor_buffer_offsets_ext(
-        PipelineBindPoint::Compute,
-        pipeline_layout,
-        Default::default(),
-        &buffer_indices,
-        &offsets,
-    );
+    unsafe {
+        device.cmd_set_descriptor_buffer_offsets_ext(
+            command_buffer,
+            PipelineBindPoint::COMPUTE,
+            pipeline_layout,
+            Default::default(),
+            &buffer_indices,
+            &offsets,
+        );
+    }
 
-    command_buffer.dispatch(
-        f32::ceil(draw_extent.width as f32 / 16.0) as _,
-        f32::ceil(draw_extent.height as f32 / 16.0) as _,
-        1,
-    );
+    unsafe {
+        device.cmd_dispatch(
+            command_buffer,
+            f32::ceil(draw_extent.width as f32 / 16.0) as _,
+            f32::ceil(draw_extent.height as f32 / 16.0) as _,
+            1,
+        );
+    }
 }

@@ -2,7 +2,7 @@ use bevy_ecs::system::{Res, ResMut};
 use connect_math::*;
 use connect_renderer::*;
 
-use vulkanite::vk::*;
+use vulkan::vk::*;
 
 pub fn prepare_default_textures_system(
     vulkan_ctx_resource: Res<VulkanContextResource>,
@@ -33,9 +33,9 @@ pub fn prepare_default_textures_system(
     let (checkerboard_texture_reference, _) = textures_pool.create_texture(
         None,
         false,
-        Format::R8G8B8A8Unorm,
+        Format::R8G8B8A8_UNORM,
         checkerboard_image_extent,
-        ImageUsageFlags::Sampled | ImageUsageFlags::TransferDst,
+        ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
         false,
     );
 
@@ -67,9 +67,9 @@ pub fn prepare_default_textures_system(
     let (white_texture_reference, _) = textures_pool.create_texture(
         None,
         false,
-        Format::R8G8B8A8Srgb,
+        Format::R8G8B8A8_SRGB,
         white_image_extent,
-        ImageUsageFlags::Sampled | ImageUsageFlags::TransferDst,
+        ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
         false,
     );
     renderer_resources.fallback_texture_reference = white_texture_reference;
@@ -106,20 +106,20 @@ pub fn prepare_default_textures_system(
             let (draw_texture_reference, _) = textures_pool.create_texture(
                 None,
                 false,
-                Format::R16G16B16A16Sfloat,
+                Format::R16G16B16A16_SFLOAT,
                 draw_image_extent,
-                ImageUsageFlags::TransferSrc
-                    | ImageUsageFlags::Storage
-                    | ImageUsageFlags::ColorAttachment,
+                ImageUsageFlags::TRANSFER_SRC
+                    | ImageUsageFlags::STORAGE
+                    | ImageUsageFlags::COLOR_ATTACHMENT,
                 false,
             );
 
             let (depth_texture_reference, _) = textures_pool.create_texture(
                 None,
                 false,
-                Format::D32Sfloat,
+                Format::D32_SFLOAT,
                 draw_image_extent,
-                ImageUsageFlags::DepthStencilAttachment,
+                ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 false,
             );
 

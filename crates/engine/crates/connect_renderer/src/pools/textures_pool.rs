@@ -1,20 +1,17 @@
+use std::sync::Arc;
+
 use bevy_ecs::resource::Resource;
 use connect_shared::{TextureFormat, TextureKey, TextureMetadata};
 use fast_image_resize::{PixelType, images::Image};
 use image::EncodableLayout;
 use ktx2_rw::{BasisCompressionParams, Ktx2Texture};
 use slotmap::{Key, SlotMap};
-use vma::{Alloc, Allocation, AllocationCreateInfo, Allocator, MemoryUsage};
-use vulkanite::vk::{
-    ComponentMapping, ComponentSwizzle, Extent3D, Format, ImageAspectFlags, ImageCreateInfo,
-    ImageLayout, ImageSubresourceRange, ImageTiling, ImageType, ImageUsageFlags,
-    ImageViewCreateInfo, ImageViewType, MemoryPropertyFlags, SampleCountFlags, SharingMode,
-    rs::Device,
-};
+use vulkan::{Device, vk::*};
+use vulkan_vma::*;
 
 pub struct AllocatedImage {
-    pub image: vulkanite::vk::rs::Image,
-    pub image_view: vulkanite::vk::rs::ImageView,
+    pub image: vulkan::vk::Image,
+    pub image_view: vulkan::vk::ImageView,
     pub allocation: Allocation,
     pub extent: Extent3D,
     pub image_aspect_flags: ImageAspectFlags,
@@ -38,14 +35,14 @@ impl TextureReference {
 
 #[derive(Resource)]
 pub struct TexturesPoolResource {
-    device: Device,
-    allocator: Allocator,
+    device: Arc<Device>,
+    allocator: Arc<Allocator>,
     storage_slots: SlotMap<TextureKey, AllocatedImage>,
     sampled_slots: SlotMap<TextureKey, AllocatedImage>,
 }
 
 impl TexturesPoolResource {
-    pub fn new(device: Device, allocator: Allocator) -> Self {
+    pub fn new(device: Arc<Device>, allocator: Arc<Allocator>) -> Self {
         Self {
             device,
             allocator,
@@ -63,11 +60,11 @@ impl TexturesPoolResource {
         usage_flags: ImageUsageFlags,
         mip_map_enabled: bool,
     ) -> (TextureReference, Option<Ktx2Texture>) {
-        let read_only = usage_flags.contains(ImageUsageFlags::Sampled);
+        let read_only = usage_flags.contains(ImageUsageFlags::SAMPLED);
 
-        let mut aspect_flags = ImageAspectFlags::Color;
-        if format == Format::D32Sfloat {
-            aspect_flags = ImageAspectFlags::Depth;
+        let mut aspect_flags = ImageAspectFlags::COLOR;
+        if format == Format::D32_SFLOAT {
+            aspect_flags = ImageAspectFlags::DEPTH;
         }
 
         let mip_levels_count = if mip_map_enabled {
@@ -94,7 +91,9 @@ impl TexturesPoolResource {
             && let Some(data) = data
         {
             let target_ktx_format = match format {
-                Format::Bc3SrgbBlock | Format::Bc1RgbSrgbBlock => ktx2_rw::VkFormat::R8G8B8A8_SRGB,
+                Format::BC3_SRGB_BLOCK | Format::BC1_RGB_SRGB_BLOCK => {
+                    ktx2_rw::VkFormat::R8G8B8A8_SRGB
+                }
                 _ => panic!("Unsupported KTX format: {:?}!", format),
             };
 
@@ -110,14 +109,14 @@ impl TexturesPoolResource {
             .unwrap();
 
             let src_image = match format {
-                Format::Bc3SrgbBlock => Image::from_slice_u8(
+                Format::BC3_SRGB_BLOCK => Image::from_slice_u8(
                     texture_metadata.width,
                     texture_metadata.height,
                     data,
                     PixelType::U8x4,
                 )
                 .unwrap(),
-                Format::Bc1RgbSrgbBlock => Image::from_slice_u8(
+                Format::BC1_RGB_SRGB_BLOCK => Image::from_slice_u8(
                     texture_metadata.width,
                     texture_metadata.height,
                     data,
@@ -162,9 +161,9 @@ impl TexturesPoolResource {
                 .unwrap();
 
             let transcode_format = match format {
-                Format::Bc1RgbSrgbBlock => ktx2_rw::TranscodeFormat::Bc1Rgb,
-                Format::Bc3SrgbBlock => ktx2_rw::TranscodeFormat::Bc3Rgba,
-                Format::Bc7SrgbBlock => ktx2_rw::TranscodeFormat::Bc7Rgba,
+                Format::BC1_RGBA_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc1Rgb,
+                Format::BC3_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc3Rgba,
+                Format::BC7_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc7Rgba,
                 _ => panic!("Unsupported transcode format!"),
             };
 
@@ -210,9 +209,9 @@ impl TexturesPoolResource {
         aspect_flags: ImageAspectFlags,
         read_only: bool,
     ) -> TextureReference {
-        let allocation_info = AllocationCreateInfo {
+        let allocation_info = AllocationOptions {
             usage: MemoryUsage::Auto,
-            required_flags: MemoryPropertyFlags::DeviceLocal,
+            required_flags: MemoryPropertyFlags::DEVICE_LOCAL,
             ..Default::default()
         };
 
@@ -220,27 +219,27 @@ impl TexturesPoolResource {
             format,
             usage_flags,
             extent,
-            ImageLayout::Undefined,
+            ImageLayout::UNDEFINED,
             mip_levels_count,
         );
         let (allocated_image, allocation) = unsafe {
             self.allocator
-                .create_image(&image_create_info, &allocation_info)
+                .create_image(image_create_info, &allocation_info)
                 .unwrap()
         };
 
-        let image = vulkanite::vk::rs::Image::from_inner(allocated_image);
         let image_view_create_info =
-            Self::get_image_view_info(format, &image, aspect_flags, mip_levels_count);
-        let image_view = self
-            .device
-            .create_image_view(&image_view_create_info)
-            .unwrap();
+            Self::get_image_view_info(format, allocated_image, aspect_flags, mip_levels_count);
+        let image_view = unsafe {
+            self.device
+                .create_image_view(&image_view_create_info, None)
+                .unwrap()
+        };
 
         let texture_format = TextureFormat::try_from(format).unwrap();
 
         let allocated_image = AllocatedImage {
-            image,
+            image: allocated_image,
             image_view,
             allocation,
             extent,
@@ -288,12 +287,12 @@ impl TexturesPoolResource {
     fn is_compressed_image_format(format: Format) -> bool {
         matches!(
             format,
-            Format::Bc1RgbSrgbBlock
-                | Format::Bc3SrgbBlock
-                | Format::Bc4SnormBlock
-                | Format::Bc5SnormBlock
-                | Format::Bc6HSfloatBlock
-                | Format::Bc7SrgbBlock
+            Format::BC1_RGB_SRGB_BLOCK
+                | Format::BC3_SRGB_BLOCK
+                | Format::BC4_UNORM_BLOCK
+                | Format::BC5_UNORM_BLOCK
+                | Format::BC6H_SFLOAT_BLOCK
+                | Format::BC7_SRGB_BLOCK
         )
     }
 
@@ -315,28 +314,29 @@ impl TexturesPoolResource {
         extent: Extent3D,
         initial_layout: ImageLayout,
         mip_levels: u32,
-    ) -> ImageCreateInfo<'a> {
-        ImageCreateInfo::default()
-            .image_type(ImageType::Type2D)
+    ) -> ImageCreateInfo {
+        ImageCreateInfoBuilder::default()
+            .image_type(ImageType::_2D)
             .format(format)
             .extent(extent)
             .mip_levels(mip_levels)
             .array_layers(1)
-            .samples(SampleCountFlags::Count1)
-            .tiling(ImageTiling::Optimal)
+            .samples(SampleCountFlags::_1)
+            .tiling(ImageTiling::OPTIMAL)
             .usage(usage_flags)
-            .sharing_mode(SharingMode::Exclusive)
+            .sharing_mode(SharingMode::EXCLUSIVE)
             .initial_layout(initial_layout)
+            .build()
     }
 
-    pub fn get_image_view_info<'a>(
+    pub fn get_image_view_info(
         format: Format,
-        image: &'a vulkanite::vk::rs::Image,
+        image: vulkan::vk::Image,
         image_aspect_flags: ImageAspectFlags,
         level_count: u32,
-    ) -> ImageViewCreateInfo<'a> {
-        let mut image_view_create_info = ImageViewCreateInfo::default()
-            .view_type(ImageViewType::Type2D)
+    ) -> ImageViewCreateInfo {
+        let mut image_view_create_info = ImageViewCreateInfoBuilder::default()
+            .view_type(ImageViewType::_2D)
             .format(format)
             .components(ComponentMapping {
                 r: ComponentSwizzle::R,
@@ -345,14 +345,15 @@ impl TexturesPoolResource {
                 a: ComponentSwizzle::A,
             })
             .subresource_range(
-                ImageSubresourceRange::default()
+                ImageSubresourceRangeBuilder::default()
                     .aspect_mask(image_aspect_flags)
                     .base_mip_level(Default::default())
                     .level_count(level_count)
                     .base_array_layer(Default::default())
-                    .layer_count(1),
+                    .layer_count(1)
+                    .build(),
             );
-        image_view_create_info = image_view_create_info.image(image);
+        let image_view_create_info = image_view_create_info.image(image).build();
 
         image_view_create_info
     }
@@ -362,18 +363,18 @@ impl TexturesPoolResource {
             .iter_mut()
             .for_each(|(_, allocated_image)| unsafe {
                 self.device
-                    .destroy_image_view(Some(allocated_image.image_view));
+                    .destroy_image_view(allocated_image.image_view, None);
                 self.allocator
-                    .destroy_image(*allocated_image.image, &mut allocated_image.allocation);
+                    .destroy_image(allocated_image.image, allocated_image.allocation);
             });
 
         self.storage_slots
             .iter_mut()
             .for_each(|(_, allocated_image)| unsafe {
                 self.device
-                    .destroy_image_view(Some(allocated_image.image_view));
+                    .destroy_image_view(allocated_image.image_view, None);
                 self.allocator
-                    .destroy_image(*allocated_image.image, &mut allocated_image.allocation);
+                    .destroy_image(allocated_image.image, allocated_image.allocation);
             });
     }
 }

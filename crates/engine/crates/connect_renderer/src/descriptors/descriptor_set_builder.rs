@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use vma::*;
-use vulkanite::vk::{rs::*, *};
+use vulkan::{Device, vk::*};
+use vulkan_vma::*;
 
 use crate::*;
 
@@ -14,24 +14,24 @@ pub enum DescriptorKind {
 impl DescriptorKind {
     pub fn get_descriptor_type(&self) -> DescriptorType {
         match self {
-            DescriptorKind::StorageImage(_) => DescriptorType::StorageImage,
-            DescriptorKind::SampledImage(_) => DescriptorType::SampledImage,
-            DescriptorKind::Sampler(_) => DescriptorType::Sampler,
+            DescriptorKind::StorageImage(_) => DescriptorType::STORAGE_IMAGE,
+            DescriptorKind::SampledImage(_) => DescriptorType::SAMPLED_IMAGE,
+            DescriptorKind::Sampler(_) => DescriptorType::SAMPLER,
         }
     }
 }
 
-struct DescriptorSetLayoutBindingInfo<'a> {
-    pub binding: DescriptorSetLayoutBinding<'a>,
+struct DescriptorSetLayoutBindingInfo {
+    pub binding: DescriptorSetLayoutBinding,
     pub flags: DescriptorBindingFlags,
 }
 
 #[derive(Default)]
-pub struct DescriptorSetBuilder<'a> {
-    bindings_infos: Vec<DescriptorSetLayoutBindingInfo<'a>>,
+pub struct DescriptorSetBuilder {
+    bindings_infos: Vec<DescriptorSetLayoutBindingInfo>,
 }
 
-impl<'a> DescriptorSetBuilder<'a> {
+impl DescriptorSetBuilder {
     pub fn new() -> Self {
         Default::default()
     }
@@ -43,10 +43,11 @@ impl<'a> DescriptorSetBuilder<'a> {
         binding_flags: DescriptorBindingFlags,
     ) -> Self {
         let next_binding_index = self.bindings_infos.len();
-        let binding = DescriptorSetLayoutBinding::default()
+        let binding = DescriptorSetLayoutBindingBuilder::default()
             .binding(next_binding_index as _)
             .descriptor_type(descriptor_type)
-            .descriptor_count(descriptor_count);
+            .descriptor_count(descriptor_count)
+            .build();
 
         let binding_info = DescriptorSetLayoutBindingInfo {
             binding,
@@ -60,30 +61,31 @@ impl<'a> DescriptorSetBuilder<'a> {
 
     pub fn build(
         mut self,
-        device: Device,
-        _allocator: Allocator,
+        device: Arc<Device>,
         buffers_pool: &mut BuffersPoolResource,
         descriptor_buffer_properties: &PhysicalDeviceDescriptorBufferPropertiesEXT,
         push_constant_ranges: &[PushConstantRange],
         shader_stages: ShaderStageFlags,
     ) -> DescriptorSetHandle {
         let descriptor_set_layout_handle = self.create_descriptor_set_layout(
-            device,
+            &device,
             shader_stages,
-            DescriptorSetLayoutCreateFlags::DescriptorBufferEXT,
+            DescriptorSetLayoutCreateFlags::DESCRIPTOR_BUFFER_EXT,
         );
 
-        let descriptor_set_layouts = [descriptor_set_layout_handle.descriptor_set_layout.unwrap()];
+        let descriptor_set_layouts = [descriptor_set_layout_handle.descriptor_set_layout];
 
-        let mut bindings_infos: HashMap<u32, BindingInfo, ahash::RandomState> =
+        let mut bindings_infos: HashMap<DescriptorType, BindingInfo, ahash::RandomState> =
             HashMap::with_hasher(ahash::RandomState::new());
 
         self.bindings_infos.iter().enumerate().for_each(
             |(binding_index, descriptor_set_layout_binding_info)| {
-                let binding_offset = device.get_descriptor_set_layout_binding_offset_ext(
-                    *descriptor_set_layouts.first().unwrap(),
-                    binding_index as _,
-                );
+                let binding_offset = unsafe {
+                    device.get_descriptor_set_layout_binding_offset_ext(
+                        *descriptor_set_layouts.first().unwrap(),
+                        binding_index as _,
+                    )
+                };
 
                 let binding_info = BindingInfo { binding_offset };
                 bindings_infos.insert(
@@ -100,18 +102,22 @@ impl<'a> DescriptorSetBuilder<'a> {
 
         let descriptor_buffer_reference = buffers_pool.create_buffer(
             descriptor_buffer_size as _,
-            BufferUsageFlags::ShaderDeviceAddress | BufferUsageFlags::ResourceDescriptorBufferEXT,
+            BufferUsageFlags::SHADER_DEVICE_ADDRESS
+                | BufferUsageFlags::RESOURCE_DESCRIPTOR_BUFFER_EXT,
             BufferVisibility::HostVisible,
             None,
             Some("Descriptor Set".to_string()),
         );
 
-        let pipeline_layout_info = PipelineLayoutCreateInfo::default()
+        let pipeline_layout_info = PipelineLayoutCreateInfoBuilder::default()
             .set_layouts(descriptor_set_layouts.as_slice())
-            .push_constant_ranges(push_constant_ranges);
-        let pipeline_layout = device
-            .create_pipeline_layout(&pipeline_layout_info)
-            .unwrap();
+            .push_constant_ranges(push_constant_ranges)
+            .build();
+        let pipeline_layout = unsafe {
+            device
+                .create_pipeline_layout(&pipeline_layout_info, None)
+                .unwrap()
+        };
 
         let sampled_image_descriptor_size =
             descriptor_buffer_properties.sampled_image_descriptor_size;
@@ -125,11 +131,11 @@ impl<'a> DescriptorSetBuilder<'a> {
             storage_image_descriptor_size,
         };
 
-        let mut descriptor_set_handle = DescriptorSetHandle::new(device);
+        let mut descriptor_set_handle = DescriptorSetHandle::new(device.clone());
         descriptor_set_handle.descriptor_buffer_reference = descriptor_buffer_reference;
         descriptor_set_handle.descriptor_set_layout_handle = descriptor_set_layout_handle;
         descriptor_set_handle.push_contant_ranges = push_constant_ranges.to_vec();
-        descriptor_set_handle.pipeline_layout = Some(pipeline_layout);
+        descriptor_set_handle.pipeline_layout = pipeline_layout;
         descriptor_set_handle.bindings_infos = bindings_infos;
         descriptor_set_handle.descriptors_sizes = descriptor_sizes;
 
@@ -138,7 +144,7 @@ impl<'a> DescriptorSetBuilder<'a> {
 
     fn create_descriptor_set_layout(
         &mut self,
-        device: Device,
+        device: &Device,
         shader_stages: ShaderStageFlags,
         descriptor_set_layout_flags: DescriptorSetLayoutCreateFlags,
     ) -> DescriptorSetLayoutHandle {
@@ -163,24 +169,27 @@ impl<'a> DescriptorSetBuilder<'a> {
             .collect();
 
         let descriptor_set_layout_binding_flags_create_info =
-            &mut DescriptorSetLayoutBindingFlagsCreateInfo::default()
-                .binding_count(bindings_flags.len() as _)
-                .binding_flags(&bindings_flags);
+            &mut DescriptorSetLayoutBindingFlagsCreateInfoBuilder::default()
+                .binding_flags(&bindings_flags)
+                .build();
 
-        let descriptor_set_layout_info = DescriptorSetLayoutCreateInfo::default()
+        let descriptor_set_layout_info = DescriptorSetLayoutCreateInfoBuilder::default()
             .flags(descriptor_set_layout_flags)
             .bindings(&bindings)
-            .push_next(descriptor_set_layout_binding_flags_create_info);
+            .push_next(descriptor_set_layout_binding_flags_create_info)
+            .build();
 
-        let descriptor_set_layout = device
-            .create_descriptor_set_layout(&descriptor_set_layout_info)
-            .unwrap();
+        let descriptor_set_layout = unsafe {
+            device
+                .create_descriptor_set_layout(&descriptor_set_layout_info, None)
+                .unwrap()
+        };
 
         let descriptor_set_layout_size =
-            device.get_descriptor_set_layout_size_ext(descriptor_set_layout);
+            unsafe { device.get_descriptor_set_layout_size_ext(descriptor_set_layout) };
 
         DescriptorSetLayoutHandle {
-            descriptor_set_layout: Some(descriptor_set_layout),
+            descriptor_set_layout,
             descriptor_set_layout_size,
         }
     }

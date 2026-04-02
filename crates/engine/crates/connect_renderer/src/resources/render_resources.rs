@@ -2,7 +2,7 @@ use bevy_ecs::resource::Resource;
 use bytemuck::{NoUninit, Pod, Zeroable};
 use connect_math::*;
 use padding_struct::padding_struct;
-use vulkanite::vk::{rs::*, *};
+use vulkan::vk::*;
 
 use crate::*;
 
@@ -39,12 +39,12 @@ pub struct GraphicsPushConstant {
 
 #[derive(Default, Clone, Copy)]
 pub struct ShaderObject {
-    pub shader: Option<ShaderEXT>,
+    pub shader: ShaderEXT,
     pub stage: ShaderStageFlags,
 }
 
 impl ShaderObject {
-    pub fn new(shader: Option<ShaderEXT>, stage: ShaderStageFlags) -> Self {
+    pub fn new(shader: ShaderEXT, stage: ShaderStageFlags) -> Self {
         Self { shader, stage }
     }
 }

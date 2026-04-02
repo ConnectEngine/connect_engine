@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use bevy_ecs::world::World;
 use connect_renderer::*;
-use vulkanite::vk::{rs::Device, *};
+use vulkan::{Device, vk::*};
 
 use crate::engine::{Engine, ecs::audio::Audio};
 
@@ -16,8 +18,8 @@ impl Engine {
 
         let upload_command_group = render_context.upload_context.command_group;
 
-        let device = vulkan_context.device;
-        let allocator = vulkan_context.allocator;
+        let device = vulkan_context.device.clone();
+        let allocator = vulkan_context.allocator.clone();
 
         let renderer_resources = RendererResources {
             default_texture_reference: Default::default(),
@@ -34,20 +36,21 @@ impl Engine {
         };
 
         let mut buffers_pool = BuffersPoolResource::new(
-            device,
-            allocator,
+            vulkan_context.instance.clone(),
+            device.clone(),
+            allocator.clone(),
             upload_command_group,
             vulkan_context.transfer_queue,
         );
-        let textures_pool = TexturesPoolResource::new(device, vulkan_context.allocator);
-        let samplers_pool = SamplersPool::new(device);
+        let textures_pool = TexturesPoolResource::new(device.clone(), allocator.clone());
+        let samplers_pool = SamplersPool::new(device.clone());
         let mesh_buffers_pool = MeshBuffersPool::new(Default::default(), 5_120);
 
         let push_constant_range = PushConstantRange {
-            stage_flags: ShaderStageFlags::MeshEXT
-                | ShaderStageFlags::Fragment
-                | ShaderStageFlags::Compute
-                | ShaderStageFlags::TaskEXT,
+            stage_flags: ShaderStageFlags::MESH_EXT
+                | ShaderStageFlags::FRAGMENT
+                | ShaderStageFlags::COMPUTE
+                | ShaderStageFlags::TASK_EXT,
             offset: Default::default(),
             size: std::mem::size_of::<GraphicsPushConstant>() as _,
         };
@@ -55,7 +58,6 @@ impl Engine {
         let push_constant_ranges = [push_constant_range];
         let descriptor_set_handle = Self::create_descriptor_set_handle(
             device,
-            allocator,
             &mut buffers_pool,
             &device_properties_resource,
             &push_constant_ranges,
@@ -73,8 +75,7 @@ impl Engine {
     }
 
     fn create_descriptor_set_handle(
-        device: Device,
-        allocator: vma::Allocator,
+        device: Arc<Device>,
         buffers_pool: &mut BuffersPoolResource,
         device_properties_resource: &DevicePropertiesResource,
         push_constant_ranges: &[PushConstantRange],
@@ -82,34 +83,33 @@ impl Engine {
         // Samplers
         DescriptorSetBuilder::new()
             .add_binding(
-                DescriptorType::Sampler,
+                DescriptorType::SAMPLER,
                 16,
-                DescriptorBindingFlags::PartiallyBound,
+                DescriptorBindingFlags::PARTIALLY_BOUND,
             )
             // Storage Images (aka Draw Image)
             .add_binding(
-                DescriptorType::StorageImage,
+                DescriptorType::STORAGE_IMAGE,
                 2048,
-                DescriptorBindingFlags::PartiallyBound,
+                DescriptorBindingFlags::PARTIALLY_BOUND,
             )
             // Sampled Images (aka Textures), we can resize count of descriptors, we pre-alllocate N descriptors,
             // but we specify that count as unbound (aka variable)
             .add_binding(
-                DescriptorType::SampledImage,
+                DescriptorType::SAMPLED_IMAGE,
                 30_000,
-                DescriptorBindingFlags::PartiallyBound
-                    | DescriptorBindingFlags::VariableDescriptorCount,
+                DescriptorBindingFlags::PARTIALLY_BOUND
+                    | DescriptorBindingFlags::VARIABLE_DESCRIPTOR_COUNT,
             )
             .build(
                 device,
-                allocator,
                 buffers_pool,
                 &device_properties_resource.descriptor_buffer_properties,
                 push_constant_ranges,
-                ShaderStageFlags::Compute
-                    | ShaderStageFlags::Fragment
-                    | ShaderStageFlags::MeshEXT
-                    | ShaderStageFlags::TaskEXT,
+                ShaderStageFlags::COMPUTE
+                    | ShaderStageFlags::FRAGMENT
+                    | ShaderStageFlags::MESH_EXT
+                    | ShaderStageFlags::TASK_EXT,
             )
     }
 }

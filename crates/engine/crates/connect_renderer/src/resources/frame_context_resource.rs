@@ -1,6 +1,6 @@
 use bevy_ecs::resource::Resource;
 use connect_math::*;
-use vulkanite::vk::rs::CommandBuffer;
+use vulkan::vk::*;
 
 use crate::TextureReference;
 

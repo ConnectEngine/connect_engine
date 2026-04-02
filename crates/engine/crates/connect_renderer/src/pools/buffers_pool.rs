@@ -1,23 +1,14 @@
 use std::{
     ffi::{CString, c_void},
     str::FromStr as _,
+    sync::Arc,
 };
 
 use bevy_ecs::resource::Resource;
 use connect_shared::BufferKey;
 use slotmap::SlotMap;
-use vma::{
-    Alloc as _, Allocation, AllocationCreateFlags, AllocationCreateInfo, Allocator, MemoryUsage,
-};
-use vulkanite::{
-    Handle,
-    vk::{
-        BufferCopy, BufferCreateInfo, BufferDeviceAddressInfo, BufferUsageFlags,
-        CommandBufferBeginInfo, CommandBufferUsageFlags, CommandPoolResetFlags,
-        DebugUtilsObjectNameInfoEXT, DeviceAddress, DeviceSize, MemoryPropertyFlags, ObjectType,
-        SubmitInfo, rs::*,
-    },
-};
+use vulkan::{Device, Instance, vk::*};
+use vulkan_vma::*;
 
 // TODO: MOVE TO SOME PLACE
 
@@ -31,13 +22,13 @@ pub struct CommandGroup {
 //////////////////////////////////////////////////
 
 pub struct MapppedAllocationHandler {
-    allocator: Allocator,
+    allocator: Arc<Allocator>,
     allocation: Allocation,
     ptr: *mut u8,
 }
 
 impl MapppedAllocationHandler {
-    pub fn new(allocator: Allocator, allocation: Allocation, ptr: *mut u8) -> Self {
+    pub fn new(allocator: Arc<Allocator>, allocation: Allocation, ptr: *mut u8) -> Self {
         Self {
             allocator,
             allocation,
@@ -114,8 +105,9 @@ impl BufferReference {
 
 #[derive(Resource)]
 pub struct BuffersPoolResource {
-    device: Device,
-    allocator: Allocator,
+    instance: Arc<Instance>,
+    device: Arc<Device>,
+    allocator: Arc<Allocator>,
     slots: SlotMap<BufferKey, AllocatedBuffer>,
     staging_buffer_reference: BufferReference,
     upload_command_group: CommandGroup,
@@ -124,12 +116,14 @@ pub struct BuffersPoolResource {
 
 impl BuffersPoolResource {
     pub fn new(
-        device: Device,
-        allocator: Allocator,
+        instance: Arc<Instance>,
+        device: Arc<Device>,
+        allocator: Arc<Allocator>,
         upload_command_group: CommandGroup,
         transfer_queue: Queue,
     ) -> Self {
         let mut memory_bucket = Self {
+            instance,
             device,
             allocator,
             slots: SlotMap::with_capacity_and_key(2_048),
@@ -141,7 +135,7 @@ impl BuffersPoolResource {
         // Pre-allocate 64 MB for transfers.
         let staging_buffer_reference = memory_bucket.create_buffer(
             1024 * 1024 * 64,
-            BufferUsageFlags::TransferSrc,
+            BufferUsageFlags::TRANSFER_SRC,
             BufferVisibility::HostVisible,
             None,
             Some("Staging Buffer".to_string()),
@@ -160,19 +154,19 @@ impl BuffersPoolResource {
         name: Option<String>,
     ) -> BufferReference {
         let mut buffer_kind_usage = if allocation_size < 1024 * 64 {
-            BufferUsageFlags::UniformBuffer
+            BufferUsageFlags::UNIFORM_BUFFER
         } else {
-            BufferUsageFlags::StorageBuffer
+            BufferUsageFlags::STORAGE_BUFFER
         };
 
-        if usage.contains(BufferUsageFlags::ResourceDescriptorBufferEXT) {
+        if usage.contains(BufferUsageFlags::RESOURCE_DESCRIPTOR_BUFFER_EXT) {
             buffer_kind_usage = BufferUsageFlags::empty();
         }
 
         let buffer_create_info = BufferCreateInfo {
             size: allocation_size as _,
-            usage: usage | buffer_kind_usage | BufferUsageFlags::ShaderDeviceAddress,
-            sharing_mode: vulkanite::vk::SharingMode::Exclusive,
+            usage: usage | buffer_kind_usage | BufferUsageFlags::SHADER_DEVICE_ADDRESS,
+            sharing_mode: SharingMode::EXCLUSIVE,
             ..Default::default()
         };
 
@@ -182,16 +176,16 @@ impl BuffersPoolResource {
 
         let allocation_flags = match buffer_visibility {
             BufferVisibility::HostVisible => {
-                AllocationCreateFlags::Mapped
-                    | AllocationCreateFlags::HostAccessSequentialWrite
-                    | AllocationCreateFlags::StrategyMinMemory
+                AllocationCreateFlags::MAPPED
+                    | AllocationCreateFlags::HOST_ACCESS_SEQUENTIAL_WRITE
+                    | AllocationCreateFlags::STRATEGY_MIN_MEMORY
             }
-            BufferVisibility::DeviceOnly => AllocationCreateFlags::StrategyMinMemory,
+            BufferVisibility::DeviceOnly => AllocationCreateFlags::STRATEGY_MIN_MEMORY,
             BufferVisibility::Unspecified => unreachable!(),
         };
 
         let preferred_flags = match buffer_visibility {
-            BufferVisibility::HostVisible => MemoryPropertyFlags::HostCoherent,
+            BufferVisibility::HostVisible => MemoryPropertyFlags::HOST_COHERENT,
             BufferVisibility::DeviceOnly => MemoryPropertyFlags::empty(),
             BufferVisibility::Unspecified => unreachable!(),
         };
@@ -208,13 +202,13 @@ impl BuffersPoolResource {
 
         let base_required_flags = match buffer_visibility {
             BufferVisibility::HostVisible => MemoryPropertyFlags::empty(),
-            BufferVisibility::DeviceOnly => MemoryPropertyFlags::DeviceLocal,
+            BufferVisibility::DeviceOnly => MemoryPropertyFlags::DEVICE_LOCAL,
             BufferVisibility::Unspecified => unreachable!(),
         };
 
         let required_flags = base_required_flags | additional_memory_property_flags;
 
-        let allocation_create_info = AllocationCreateInfo {
+        let allocation_create_info = AllocationOptions {
             flags: allocation_flags,
             usage: MemoryUsage::Auto,
             required_flags,
@@ -224,24 +218,25 @@ impl BuffersPoolResource {
 
         let (buffer, allocation) = unsafe {
             self.allocator
-                .create_buffer(&buffer_create_info, &allocation_create_info)
+                .create_buffer(buffer_create_info, &allocation_create_info)
                 .unwrap()
         };
-        let buffer = Buffer::from_inner(buffer);
         let device_address = unsafe { self.get_device_address(buffer) };
 
         if let Some(name) = name {
             let name = CString::from_str(name.as_str()).unwrap();
             let debug_utils_object_name = DebugUtilsObjectNameInfoEXT {
-                object_type: ObjectType::Buffer,
-                object_handle: buffer.as_raw().get(),
-                p_object_name: name.as_ptr() as *const _,
+                object_type: ObjectType::BUFFER,
+                object_handle: buffer.as_raw(),
+                object_name: name.as_ptr() as *const _,
                 ..Default::default()
             };
 
-            self.device
-                .set_debug_utils_object_name_ext(&debug_utils_object_name)
-                .unwrap();
+            unsafe {
+                self.instance
+                    .set_debug_utils_object_name_ext(self.device.handle(), &debug_utils_object_name)
+                    .unwrap();
+            }
         }
 
         let buffer_info = BufferInfo::new(device_address, allocation_size as _, buffer_visibility);
@@ -269,9 +264,14 @@ impl BuffersPoolResource {
     }
 
     unsafe fn get_device_address(&self, buffer: Buffer) -> DeviceAddress {
-        let buffer_device_address = BufferDeviceAddressInfo::default().buffer(&buffer);
+        let buffer_device_address = BufferDeviceAddressInfoBuilder::default()
+            .buffer(buffer)
+            .build();
 
-        self.device.get_buffer_address(&buffer_device_address)
+        unsafe {
+            self.device
+                .get_buffer_device_address(&buffer_device_address)
+        }
     }
 
     pub unsafe fn transfer_data_to_buffer(
@@ -424,39 +424,58 @@ impl BuffersPoolResource {
         let command_buffer = self.upload_command_group.command_buffer;
 
         let command_buffer_begin_info = CommandBufferBeginInfo {
-            flags: CommandBufferUsageFlags::OneTimeSubmit,
+            flags: CommandBufferUsageFlags::ONE_TIME_SUBMIT,
             ..Default::default()
         };
 
-        command_buffer.begin(&command_buffer_begin_info).unwrap();
+        unsafe {
+            self.device
+                .begin_command_buffer(command_buffer, &command_buffer_begin_info)
+                .unwrap();
+        }
 
-        self.upload_command_group.command_buffer.copy_buffer(
-            src_buffer,
-            dst_buffer,
-            regions_to_copy,
-        );
+        unsafe {
+            self.device.cmd_copy_buffer(
+                self.upload_command_group.command_buffer,
+                src_buffer,
+                dst_buffer,
+                regions_to_copy,
+            );
+        }
 
-        command_buffer.end().unwrap();
+        unsafe {
+            self.device.end_command_buffer(command_buffer).unwrap();
+        }
 
         let command_buffers = [command_buffer];
-        let queue_submits = [SubmitInfo::default().command_buffers(command_buffers.as_slice())];
+        let queue_submits =
+            [SubmitInfoBuilder::default().command_buffers(command_buffers.as_slice())];
 
-        self.transfer_queue
-            .submit(&queue_submits, Some(self.upload_command_group.fence))
-            .unwrap();
+        unsafe {
+            self.device
+                .queue_submit(
+                    self.transfer_queue,
+                    &queue_submits,
+                    self.upload_command_group.fence,
+                )
+                .unwrap();
+        }
 
         let fences_to_wait = [self.upload_command_group.fence];
-        self.device
-            .wait_for_fences(fences_to_wait.as_slice(), true, u64::MAX)
-            .unwrap();
-        self.device.reset_fences(fences_to_wait.as_slice()).unwrap();
 
-        self.device
-            .reset_command_pool(
-                self.upload_command_group.command_pool,
-                CommandPoolResetFlags::ReleaseResources,
-            )
-            .unwrap();
+        unsafe {
+            self.device
+                .wait_for_fences(fences_to_wait.as_slice(), true, u64::MAX)
+                .unwrap();
+            self.device.reset_fences(fences_to_wait.as_slice()).unwrap();
+
+            self.device
+                .reset_command_pool(
+                    self.upload_command_group.command_pool,
+                    CommandPoolResetFlags::RELEASE_RESOURCES,
+                )
+                .unwrap();
+        }
     }
 
     pub fn map_allocation(&self, buffer_reference: BufferReference) -> MapppedAllocationHandler {
@@ -468,15 +487,13 @@ impl BuffersPoolResource {
                 .unwrap()
         };
 
-        MapppedAllocationHandler::new(self.allocator, allocated_buffer.allocation, ptr)
+        MapppedAllocationHandler::new(self.allocator.clone(), allocated_buffer.allocation, ptr)
     }
 
     pub unsafe fn free_allocations(&mut self) {
         self.slots.drain().for_each(|(_, allocated_buffer)| unsafe {
-            let mut allocation = allocated_buffer.allocation;
-
             self.allocator
-                .destroy_buffer(*allocated_buffer.buffer, &mut allocation);
+                .destroy_buffer(allocated_buffer.buffer, allocated_buffer.allocation);
         });
     }
 }

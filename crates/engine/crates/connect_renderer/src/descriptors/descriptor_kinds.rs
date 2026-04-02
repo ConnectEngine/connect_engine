@@ -1,4 +1,4 @@
-use vulkanite::vk::rs::*;
+use vulkan::vk::{ImageView, Sampler};
 
 #[derive(Clone, Copy)]
 pub struct DescriptorStorageImage {

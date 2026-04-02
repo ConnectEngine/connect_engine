@@ -1,5 +1,5 @@
 use bevy_ecs::system::{Commands, Res, ResMut};
-use vulkanite::vk::{rs::*, *};
+use vulkan::{Device, vk::*};
 
 use crate::engine::utils::load_shader;
 
@@ -14,7 +14,7 @@ pub fn prepare_shaders_system(
     mut buffers_pool: ResMut<BuffersPoolResource>,
     mut mesh_buffers_pool: ResMut<MeshBuffersPool>,
 ) {
-    let device = vulkan_ctx_resource.device;
+    let device = vulkan_ctx_resource.device.as_ref();
 
     let descriptor_set_layouts = [descriptor_set_handle.get_descriptor_set_layout()];
     let push_constant_ranges = descriptor_set_handle.push_contant_ranges.as_slice();
@@ -24,31 +24,31 @@ pub fn prepare_shaders_system(
         ShaderInfo {
             path: r"intermediate\shaders\gradient.slang.spv",
             flags: ShaderCreateFlagsEXT::empty(),
-            stage: ShaderStageFlags::Compute,
+            stage: ShaderStageFlags::COMPUTE,
             next_stage: ShaderStageFlags::empty(),
             descriptor_layouts: &descriptor_set_layouts,
             push_constant_ranges: Some(push_constant_ranges),
         },
         ShaderInfo {
             path: mesh_shader_path,
-            flags: ShaderCreateFlagsEXT::LinkStage,
-            stage: ShaderStageFlags::TaskEXT,
-            next_stage: ShaderStageFlags::MeshEXT,
+            flags: ShaderCreateFlagsEXT::LINK_STAGE,
+            stage: ShaderStageFlags::TASK_EXT,
+            next_stage: ShaderStageFlags::MESH_EXT,
             descriptor_layouts: &descriptor_set_layouts,
             push_constant_ranges: Some(push_constant_ranges),
         },
         ShaderInfo {
             path: mesh_shader_path,
-            flags: ShaderCreateFlagsEXT::LinkStage,
-            stage: ShaderStageFlags::MeshEXT,
-            next_stage: ShaderStageFlags::Fragment,
+            flags: ShaderCreateFlagsEXT::LINK_STAGE,
+            stage: ShaderStageFlags::MESH_EXT,
+            next_stage: ShaderStageFlags::FRAGMENT,
             descriptor_layouts: &descriptor_set_layouts,
             push_constant_ranges: Some(push_constant_ranges),
         },
         ShaderInfo {
             path: mesh_shader_path,
-            flags: ShaderCreateFlagsEXT::LinkStage,
-            stage: ShaderStageFlags::Fragment,
+            flags: ShaderCreateFlagsEXT::LINK_STAGE,
+            stage: ShaderStageFlags::FRAGMENT,
             next_stage: ShaderStageFlags::empty(),
             descriptor_layouts: &descriptor_set_layouts,
             push_constant_ranges: Some(push_constant_ranges),
@@ -65,7 +65,7 @@ pub fn prepare_shaders_system(
     // TODO: Move to the other place.
     let materials_data_buffer_reference = buffers_pool.create_buffer(
         1024 * 1024 * 64,
-        BufferUsageFlags::ShaderDeviceAddress | BufferUsageFlags::TransferDst,
+        BufferUsageFlags::SHADER_DEVICE_ADDRESS | BufferUsageFlags::TRANSFER_DST,
         BufferVisibility::HostVisible,
         None,
         Some("Materials Data Buffer".to_string()),
@@ -74,9 +74,9 @@ pub fn prepare_shaders_system(
     for instances_objects_buffer_index in 0..instance_objects_buffers.capacity() {
         let instance_objects_buffer_reference = buffers_pool.create_buffer(
             std::mem::size_of::<InstanceObject>() * 1_000_000,
-            BufferUsageFlags::ShaderDeviceAddress | BufferUsageFlags::TransferDst,
+            BufferUsageFlags::SHADER_DEVICE_ADDRESS | BufferUsageFlags::TRANSFER_DST,
             BufferVisibility::HostVisible,
-            Some(MemoryPropertyFlags::LazilyAllocated),
+            Some(MemoryPropertyFlags::LAZILY_ALLOCATED),
             Some(std::format!(
                 "Instances Objects Buffer {}",
                 instances_objects_buffer_index
@@ -90,7 +90,7 @@ pub fn prepare_shaders_system(
     for scene_data_buffer_index in 0..scene_data_buffers.capacity() {
         let scene_data_buffer_reference = buffers_pool.create_buffer(
             std::mem::size_of::<SceneData>(),
-            BufferUsageFlags::ShaderDeviceAddress | BufferUsageFlags::TransferDst,
+            BufferUsageFlags::SHADER_DEVICE_ADDRESS | BufferUsageFlags::TRANSFER_DST,
             BufferVisibility::HostVisible,
             None,
             Some(std::format!(
@@ -104,7 +104,7 @@ pub fn prepare_shaders_system(
 
     let mesh_objects_buffer_reference = buffers_pool.create_buffer(
         std::mem::size_of::<MeshObject>() * 8192,
-        BufferUsageFlags::ShaderDeviceAddress | BufferUsageFlags::TransferDst,
+        BufferUsageFlags::SHADER_DEVICE_ADDRESS | BufferUsageFlags::TRANSFER_DST,
         BufferVisibility::DeviceOnly,
         None,
         Some("Mesh Objects Buffer".to_string()),
@@ -128,7 +128,7 @@ pub fn prepare_shaders_system(
     mesh_buffers_pool.set_mesh_objects_buffer_reference(mesh_objects_buffer_reference);
 }
 
-fn create_shaders(device: Device, shader_infos: &[ShaderInfo]) -> Vec<ShaderObject> {
+fn create_shaders(device: &Device, shader_infos: &[ShaderInfo]) -> Vec<ShaderObject> {
     let shader_codes: Vec<Vec<u8>> = shader_infos
         .iter()
         .map(|shader_info| load_shader(shader_info.path))
@@ -138,24 +138,27 @@ fn create_shaders(device: Device, shader_infos: &[ShaderInfo]) -> Vec<ShaderObje
         .iter()
         .zip(shader_codes.as_slice())
         .map(|(shader_info, shader_code)| {
-            ShaderCreateInfoEXT::default()
+            ShaderCreateInfoEXT::builder()
                 .flags(shader_info.flags)
                 .code(shader_code)
-                .name(Some(c"main"))
+                .name(b"main/0")
                 .stage(shader_info.stage)
                 .next_stage(shader_info.next_stage)
-                .code_type(ShaderCodeTypeEXT::Spirv)
+                .code_type(ShaderCodeTypeEXT::SPIRV)
                 .set_layouts(shader_info.descriptor_layouts)
                 .push_constant_ranges(shader_info.push_constant_ranges.unwrap_or_default())
         })
         .collect();
 
-    let (_status, shaders): (_, Vec<ShaderEXT>) =
-        device.create_shaders_ext(&shader_create_infos).unwrap();
+    let (shaders, _success_code) = unsafe {
+        device
+            .create_shaders_ext(&shader_create_infos, None)
+            .unwrap()
+    };
 
     shaders
         .into_iter()
         .zip(shader_infos.iter().as_slice())
-        .map(|(shader, shader_info)| ShaderObject::new(Some(shader), shader_info.stage))
+        .map(|(shader, shader_info)| ShaderObject::new(shader, shader_info.stage))
         .collect()
 }

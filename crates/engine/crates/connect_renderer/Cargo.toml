@@ -22,7 +22,7 @@ ktx2-rw = { workspace = true }
 fast_image_resize = { workspace = true }
 meshopt = { workspace = true }
 padding-struct = { workspace = true }
-vulkanite = { workspace = true }
-vma = { workspace = true }
+vulkan = { workspace = true }
+vulkan_vma = { workspace = true }
 ahash = { workspace = true }
 slotmap = { workspace = true }

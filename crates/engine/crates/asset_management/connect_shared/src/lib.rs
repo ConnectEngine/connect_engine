@@ -1,6 +1,6 @@
 use connect_math::*;
 use std::path::PathBuf;
-use vulkanite::vk::Format;
+use vulkan::vk::Format;
 
 use bevy_ecs::{component::Component, name::Name};
 use bytemuck::{Pod, Zeroable};
@@ -188,17 +188,17 @@ impl TryFrom<Format> for TextureFormat {
 
     fn try_from(v: Format) -> Result<Self, Self::Error> {
         match v {
-            Format::R8G8B8A8Srgb => Ok(TextureFormat::RGBA8Srgb),
-            Format::R8G8B8Srgb => Ok(TextureFormat::RGB8Srgb),
-            Format::R8G8B8A8Unorm => Ok(TextureFormat::RGBA8Unorm),
-            Format::R16G16B16A16Sfloat => Ok(TextureFormat::RGBA16Sfloat),
-            Format::D32Sfloat => Ok(TextureFormat::D32Sfloat),
-            Format::Bc1RgbSrgbBlock => Ok(TextureFormat::Bc1),
-            Format::Bc3SrgbBlock => Ok(TextureFormat::Bc3),
-            Format::Bc4UnormBlock => Ok(TextureFormat::Bc4),
-            Format::Bc5UnormBlock => Ok(TextureFormat::Bc5),
-            Format::Bc6HSfloatBlock => Ok(TextureFormat::Bc6H),
-            Format::Bc7SrgbBlock => Ok(TextureFormat::Bc7),
+            Format::R8G8B8A8_SRGB => Ok(TextureFormat::RGBA8Srgb),
+            Format::R8G8B8_SRGB => Ok(TextureFormat::RGB8Srgb),
+            Format::R8G8B8A8_UNORM => Ok(TextureFormat::RGBA8Unorm),
+            Format::R16G16B16A16_SFLOAT => Ok(TextureFormat::RGBA16Sfloat),
+            Format::D32_SFLOAT => Ok(TextureFormat::D32Sfloat),
+            Format::BC1_RGB_SRGB_BLOCK => Ok(TextureFormat::Bc1),
+            Format::BC3_SRGB_BLOCK => Ok(TextureFormat::Bc3),
+            Format::BC4_UNORM_BLOCK => Ok(TextureFormat::Bc4),
+            Format::BC5_UNORM_BLOCK => Ok(TextureFormat::Bc5),
+            Format::BC6H_SFLOAT_BLOCK => Ok(TextureFormat::Bc6H),
+            Format::BC7_SRGB_BLOCK => Ok(TextureFormat::Bc7),
             _ => Err(v),
         }
     }
@@ -209,17 +209,17 @@ impl TryInto<Format> for TextureFormat {
 
     fn try_into(self) -> Result<Format, Self::Error> {
         match self {
-            TextureFormat::RGBA8Srgb => Ok(Format::R8G8B8A8Srgb),
-            TextureFormat::RGB8Srgb => Ok(Format::R8G8B8Srgb),
-            TextureFormat::RGBA8Unorm => Ok(Format::R8G8B8A8Unorm),
-            TextureFormat::RGBA16Sfloat => Ok(Format::R16G16B16A16Sfloat),
-            TextureFormat::D32Sfloat => Ok(Format::D32Sfloat),
-            TextureFormat::Bc1 => Ok(Format::Bc1RgbSrgbBlock),
-            TextureFormat::Bc3 => Ok(Format::Bc3SrgbBlock),
-            TextureFormat::Bc4 => Ok(Format::Bc4UnormBlock),
-            TextureFormat::Bc5 => Ok(Format::Bc5UnormBlock),
-            TextureFormat::Bc6H => Ok(Format::Bc6HSfloatBlock),
-            TextureFormat::Bc7 => Ok(Format::Bc7SrgbBlock),
+            TextureFormat::RGBA8Srgb => Ok(Format::R8G8B8A8_SRGB),
+            TextureFormat::RGB8Srgb => Ok(Format::R8G8B8_SRGB),
+            TextureFormat::RGBA8Unorm => Ok(Format::R8G8B8A8_UNORM),
+            TextureFormat::RGBA16Sfloat => Ok(Format::R16G16B16A16_SFLOAT),
+            TextureFormat::D32Sfloat => Ok(Format::D32_SFLOAT),
+            TextureFormat::Bc1 => Ok(Format::BC1_RGB_SRGB_BLOCK),
+            TextureFormat::Bc3 => Ok(Format::BC3_SRGB_BLOCK),
+            TextureFormat::Bc4 => Ok(Format::BC4_UNORM_BLOCK),
+            TextureFormat::Bc5 => Ok(Format::BC5_UNORM_BLOCK),
+            TextureFormat::Bc6H => Ok(Format::BC6H_SFLOAT_BLOCK),
+            TextureFormat::Bc7 => Ok(Format::BC7_SRGB_BLOCK),
         }
     }
 }

@@ -1,5 +1,5 @@
 use bevy_ecs::world::World;
-use vulkanite::vk::{rs::*, *};
+use vulkan::vk::*;
 use winit::window::Window;
 
 use crate::engine::Engine;
@@ -12,57 +12,76 @@ impl Engine {
         world: &World,
     ) -> RendererContextResource {
         let vulkan_context_resource = world.get_resource_ref::<VulkanContextResource>().unwrap();
-        let device = vulkan_context_resource.device;
+        let device = &vulkan_context_resource.device;
         let swapchain = &vulkan_context_resource.swapchain;
 
-        let images: Vec<Image> = device.get_swapchain_images_khr(*swapchain).unwrap();
+        let images: Vec<Image> = unsafe { device.get_swapchain_images_khr(*swapchain).unwrap() };
         let image_views: Vec<ImageView> = images
             .iter()
-            .map(|img| {
+            .map(|&image| unsafe {
                 device
                     .create_image_view(
-                        &ImageViewCreateInfo::default()
-                            .image(img)
-                            .view_type(ImageViewType::Type2D)
+                        &ImageViewCreateInfoBuilder::default()
+                            .image(image)
+                            .view_type(ImageViewType::_2D)
                             .format(vulkan_context_resource.surface_format.format)
                             .subresource_range(ImageSubresourceRange {
-                                aspect_mask: ImageAspectFlags::Color,
+                                aspect_mask: ImageAspectFlags::COLOR,
                                 base_mip_level: 0,
                                 level_count: 1,
                                 base_array_layer: 0,
                                 layer_count: 1,
                             }),
+                        None,
                     )
                     .unwrap()
             })
             .collect();
         let frame_overlap = image_views.len();
 
-        let command_pool_info = CommandPoolCreateInfo::default()
-            .flags(CommandPoolCreateFlags::ResetCommandBuffer)
-            .queue_family_index(vulkan_context_resource.queue_family_index as _);
+        let command_pool_info = CommandPoolCreateInfoBuilder::default()
+            .flags(CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
+            .queue_family_index(vulkan_context_resource.queue_family_index as _)
+            .build();
 
         let device = &vulkan_context_resource.device;
         let frames_data = (0..frame_overlap)
             .map(|_| {
-                let command_pool = device.create_command_pool(&command_pool_info).unwrap();
+                let command_pool = unsafe {
+                    device
+                        .create_command_pool(&command_pool_info, None)
+                        .unwrap()
+                };
 
-                let command_buffer_allocate_info = CommandBufferAllocateInfo::default()
-                    .command_pool(&command_pool)
-                    .level(vulkanite::vk::CommandBufferLevel::Primary)
-                    .command_buffer_count(1);
+                let command_buffer_allocate_info = CommandBufferAllocateInfoBuilder::default()
+                    .command_pool(command_pool)
+                    .level(CommandBufferLevel::PRIMARY)
+                    .command_buffer_count(1)
+                    .build();
 
-                let command_buffers: Vec<CommandBuffer> = device
-                    .allocate_command_buffers(&command_buffer_allocate_info)
-                    .unwrap();
+                let command_buffers: Vec<CommandBuffer> = unsafe {
+                    device
+                        .allocate_command_buffers(&command_buffer_allocate_info)
+                        .unwrap()
+                };
                 let command_buffer = command_buffers[0];
 
-                let fence_info = FenceCreateInfo::default().flags(FenceCreateFlags::Signaled);
-                let render_fence = device.create_fence(&fence_info).unwrap();
+                let fence_info = FenceCreateInfoBuilder::default()
+                    .flags(FenceCreateFlags::SIGNALED)
+                    .build();
+                let render_fence = unsafe { device.create_fence(&fence_info, None).unwrap() };
 
                 let semaphore_create_info = SemaphoreCreateInfo::default();
-                let swapchain_semaphore = device.create_semaphore(&semaphore_create_info).unwrap();
-                let render_semaphore = device.create_semaphore(&semaphore_create_info).unwrap();
+                let swapchain_semaphore = unsafe {
+                    device
+                        .create_semaphore(&semaphore_create_info, None)
+                        .unwrap()
+                };
+                let render_semaphore = unsafe {
+                    device
+                        .create_semaphore(&semaphore_create_info, None)
+                        .unwrap()
+                };
 
                 let command_group = CommandGroup {
                     command_pool,
@@ -86,18 +105,25 @@ impl Engine {
         };
 
         let fence_info = FenceCreateInfo::default();
-        let fence = device.create_fence(&fence_info).unwrap();
+        let fence = unsafe { device.create_fence(&fence_info, None).unwrap() };
 
-        let command_pool = device.create_command_pool(&command_pool_info).unwrap();
+        let command_pool = unsafe {
+            device
+                .create_command_pool(&command_pool_info, None)
+                .unwrap()
+        };
 
-        let command_buffer_allocate_info = CommandBufferAllocateInfo::default()
-            .command_pool(&command_pool)
-            .level(vulkanite::vk::CommandBufferLevel::Primary)
-            .command_buffer_count(1);
+        let command_buffer_allocate_info = CommandBufferAllocateInfoBuilder::default()
+            .command_pool(command_pool)
+            .level(CommandBufferLevel::PRIMARY)
+            .command_buffer_count(1)
+            .build();
 
-        let command_buffers: Vec<CommandBuffer> = device
-            .allocate_command_buffers(&command_buffer_allocate_info)
-            .unwrap();
+        let command_buffers: Vec<CommandBuffer> = unsafe {
+            device
+                .allocate_command_buffers(&command_buffer_allocate_info)
+                .unwrap()
+        };
         let command_buffer = command_buffers[0];
 
         let upload_context = UploadContext {

@@ -14,9 +14,7 @@ use connect_math::*;
 use connect_shared::*;
 use memmap2::Mmap;
 use uuid::Uuid;
-use vulkanite::vk::{
-    BufferCopy, BufferUsageFlags, DeviceAddress, Format, ImageAspectFlags, ImageUsageFlags,
-};
+use vulkan::vk::*;
 use walkdir::WalkDir;
 
 pub mod events;
@@ -561,14 +559,14 @@ impl Loader {
         let texture_format: Format = texture_metadata.texture_format.try_into().unwrap();
         let texture_reference = textures_pool.upload_texture(
             texture_format,
-            vulkanite::vk::Extent3D {
+            vulkan::vk::Extent3D {
                 width: texture_metadata.width,
                 height: texture_metadata.height,
                 depth: 1,
             },
-            ImageUsageFlags::Sampled | ImageUsageFlags::TransferDst,
+            ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
             texture_metadata.mip_levels_count,
-            ImageAspectFlags::Color,
+            ImageAspectFlags::COLOR,
             true,
         );
 
@@ -639,7 +637,7 @@ impl Loader {
     ) -> BufferReference {
         let buffer_reference = buffers_pool.create_buffer(
             size,
-            BufferUsageFlags::TransferDst,
+            BufferUsageFlags::TRANSFER_DST,
             BufferVisibility::DeviceOnly,
             None,
             Some(name),

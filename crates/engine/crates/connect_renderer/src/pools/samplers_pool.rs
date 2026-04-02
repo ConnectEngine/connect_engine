@@ -1,10 +1,9 @@
+use std::sync::Arc;
+
 use bevy_ecs::resource::Resource;
 use connect_shared::*;
 use slotmap::SlotMap;
-use vulkanite::vk::{
-    CompareOp, Filter, LOD_CLAMP_NONE, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode,
-    rs::{Device, Sampler},
-};
+use vulkan::{Device, vk::*};
 
 #[derive(Default, Clone, Copy)]
 pub struct SamplerReference {
@@ -19,12 +18,12 @@ impl SamplerReference {
 
 #[derive(Resource)]
 pub struct SamplersPool {
-    device: Device,
+    device: Arc<Device>,
     slots: SlotMap<SamplerKey, Sampler>,
 }
 
 impl SamplersPool {
-    pub fn new(device: Device) -> Self {
+    pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
             slots: SlotMap::with_capacity_and_key(16),
@@ -39,18 +38,18 @@ impl SamplersPool {
     ) -> SamplerReference {
         let mipmap_mode = if mip_map_enabled {
             match filter {
-                Filter::Nearest => SamplerMipmapMode::Nearest,
-                Filter::Linear => SamplerMipmapMode::Linear,
+                Filter::NEAREST => SamplerMipmapMode::NEAREST,
+                Filter::LINEAR => SamplerMipmapMode::LINEAR,
                 _ => panic!("Unsupported filter mode: {:?}", filter),
             }
         } else {
-            SamplerMipmapMode::Nearest
+            SamplerMipmapMode::NEAREST
         };
 
         let compare_op = if mip_map_enabled {
-            CompareOp::Always
+            CompareOp::ALWAYS
         } else {
-            CompareOp::Never
+            CompareOp::NEVER
         };
 
         let max_lod = if mip_map_enabled {
@@ -70,7 +69,12 @@ impl SamplersPool {
             max_lod,
             ..Default::default()
         };
-        let sampler = self.device.create_sampler(&sampler_create_info).unwrap();
+
+        let sampler = unsafe {
+            self.device
+                .create_sampler(&sampler_create_info, None)
+                .unwrap()
+        };
 
         self.insert_sampler(sampler)
     }
@@ -85,9 +89,9 @@ impl SamplersPool {
         self.slots.get(sampler_reference.key)
     }
 
-    pub fn destroy_samplers(&mut self) {
+    pub unsafe fn destroy_samplers(&mut self) {
         self.slots.drain().for_each(|(_, sampler)| unsafe {
-            self.device.destroy_sampler(Some(sampler));
+            self.device.destroy_sampler(sampler, None);
         });
     }
 }

@@ -14,6 +14,10 @@ use connect_importer::Importer;
 use connect_information::*;
 use connect_loader::Loader;
 use connect_math::Random;
+use vulkan::vk::{
+    DeviceV1_0, ExtDebugUtilsExtensionInstanceCommands, ExtShaderObjectExtensionDeviceCommands,
+    InstanceV1_0, KhrSurfaceExtensionInstanceCommands, KhrSwapchainExtensionDeviceCommands,
+};
 use winit::{event::ElementState, keyboard::KeyCode, window::Window};
 
 use crate::{
@@ -208,7 +212,7 @@ impl Drop for Engine {
             .world
             .remove_resource::<VulkanContextResource>()
             .unwrap();
-        let render_context_resource = self
+        let mut render_context_resource = self
             .world
             .remove_resource::<RendererContextResource>()
             .unwrap();
@@ -221,9 +225,11 @@ impl Drop for Engine {
         let renderer_resources = self.world.remove_resource::<RendererResources>().unwrap();
         let descriptor_set_handle = self.world.remove_resource::<DescriptorSetHandle>().unwrap();
 
-        let device = vulkan_context_resource.device;
+        let device = vulkan_context_resource.device.as_ref();
 
-        device.wait_idle().unwrap();
+        unsafe {
+            device.device_wait_idle().unwrap();
+        }
 
         unsafe {
             buffers_pool.free_allocations();
@@ -231,56 +237,57 @@ impl Drop for Engine {
             samplers_pool.destroy_samplers();
             descriptor_set_handle.destroy();
 
-            vulkan_context_resource.allocator.drop();
+            device.destroy_shader_ext(
+                renderer_resources.gradient_compute_shader_object.shader,
+                None,
+            );
+            device.destroy_shader_ext(renderer_resources.mesh_shader_object.shader, None);
+            device.destroy_shader_ext(renderer_resources.task_shader_object.shader, None);
+            device.destroy_shader_ext(renderer_resources.fragment_shader_object.shader, None);
 
-            device.destroy_shader_ext(renderer_resources.gradient_compute_shader_object.shader);
-            device.destroy_shader_ext(renderer_resources.mesh_shader_object.shader);
-            device.destroy_shader_ext(renderer_resources.task_shader_object.shader);
-            device.destroy_shader_ext(renderer_resources.fragment_shader_object.shader);
-
-            device.destroy_command_pool(Some(
+            device.destroy_command_pool(
                 render_context_resource
                     .upload_context
                     .command_group
                     .command_pool,
-            ));
-            device.destroy_fence(Some(
+                None,
+            );
+            device.destroy_fence(
                 render_context_resource.upload_context.command_group.fence,
-            ));
+                None,
+            );
 
             render_context_resource
                 .frames_data
                 .iter()
                 .for_each(|frame_data| {
-                    device.destroy_command_pool(Some(frame_data.command_group.command_pool));
-                    device.destroy_fence(Some(frame_data.command_group.fence));
-                    device.destroy_semaphore(Some(frame_data.render_semaphore));
-                    device.destroy_semaphore(Some(frame_data.swapchain_semaphore));
+                    device.destroy_command_pool(frame_data.command_group.command_pool, None);
+                    device.destroy_fence(frame_data.command_group.fence, None);
+                    device.destroy_semaphore(frame_data.render_semaphore, None);
+                    device.destroy_semaphore(frame_data.swapchain_semaphore, None);
                 });
 
             render_context_resource
                 .image_views
                 .iter()
-                .for_each(|image_view| {
-                    vulkan_context_resource
-                        .device
-                        .destroy_image_view(Some(*image_view));
+                .for_each(|&image_view| {
+                    device.destroy_image_view(image_view, None);
                 });
 
             if let Some(debug_utils_messenger) = vulkan_context_resource.debug_utils_messenger {
                 vulkan_context_resource
                     .instance
-                    .destroy_debug_utils_messenger_ext(Some(debug_utils_messenger));
+                    .destroy_debug_utils_messenger_ext(debug_utils_messenger, None);
             }
 
             vulkan_context_resource
                 .device
-                .destroy_swapchain_khr(Some(vulkan_context_resource.swapchain));
-            vulkan_context_resource.device.destroy();
+                .destroy_swapchain_khr(vulkan_context_resource.swapchain, None);
+            vulkan_context_resource.device.destroy_device(None);
             vulkan_context_resource
                 .instance
-                .destroy_surface_khr(Some(vulkan_context_resource.surface));
-            vulkan_context_resource.instance.destroy();
+                .destroy_surface_khr(vulkan_context_resource.surface, None);
+            vulkan_context_resource.instance.destroy_instance(None);
         }
     }
 }

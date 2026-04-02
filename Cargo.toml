@@ -53,19 +53,11 @@ fast_image_resize = { version = "6.0.0", features = ["rayon", "image"] }
 padding-struct = "0.2.0"
 bytemuck = "1.25.0"
 num_cpus = "1.17.0"
-vulkanite = { git = "https://github.com/Jerrody/vulkanite", features = [
-    "version_1_4",
-    "loaded",
-    "ext_unified_image_layouts",
-    "ext_descriptor_buffer",
-    "raw-window-handle",
-    "ext_swapchain",
-    "ext_shader_object",
-    "ext_debug_utils",
-    "ext_mesh_shader",
-    "ext_validation_features",
+vulkan = { package = "vulkanalia", version = "0.35.0", features = [
+    "window",
+    "libloading",
 ] }
-vma = { package = "vk-mem", git = "https://github.com/Jerrody/vulkanite-mem-rs", branch = "vulkanite" }
+vulkan_vma = { package = "vulkanalia-vma", version = "0.9.0" }
 slotmap = { git = "https://github.com/Jerrody/slotmap" }
 memmap2 = "0.9.10"
 ahash = "0.8.12"

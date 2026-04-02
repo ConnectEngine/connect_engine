@@ -29,8 +29,8 @@ padding-struct = { workspace = true }
 bytemuck = { workspace = true }
 num_cpus = { workspace = true }
 slotmap = { workspace = true }
-vulkanite = { workspace = true }
-vma = { workspace = true }
+vulkan = { workspace = true }
+vulkan_vma = { workspace = true }
 rkyv = { workspace = true }
 
 raw-window-handle = "0.6.2"

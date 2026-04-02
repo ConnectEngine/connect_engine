@@ -1,7 +1,7 @@
 use bevy_ecs::{component::Component, resource::Resource};
 use connect_shared::{LocalTransform, MeshBufferKey, Vertex};
 use slotmap::{Key, SlotMap};
-use vulkanite::vk::DeviceAddress;
+use vulkan::vk::DeviceAddress;
 
 use crate::*;
 

@@ -12,7 +12,7 @@ pub use vulkan_context_resource::*;
 
 use bytemuck::{Pod, Zeroable};
 use padding_struct::padding_struct;
-use vulkanite::vk::DeviceAddress;
+use vulkan::vk::DeviceAddress;
 
 #[repr(C)]
 #[padding_struct]

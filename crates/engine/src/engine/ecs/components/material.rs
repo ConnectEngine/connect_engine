@@ -1,5 +1,5 @@
 use connect_renderer::MaterialState;
-use vulkanite::vk::DeviceAddress;
+use vulkan::vk::DeviceAddress;
 
 pub struct Material {
     pub ptr_data: DeviceAddress,
