@@ -22,13 +22,13 @@ pub struct CommandGroup {
 //////////////////////////////////////////////////
 
 pub struct MapppedAllocationHandler {
-    allocator: Arc<Allocator>,
+    allocator: Allocator,
     allocation: Allocation,
     ptr: *mut u8,
 }
 
 impl MapppedAllocationHandler {
-    pub fn new(allocator: Arc<Allocator>, allocation: Allocation, ptr: *mut u8) -> Self {
+    pub fn new(allocator: Allocator, allocation: Allocation, ptr: *mut u8) -> Self {
         Self {
             allocator,
             allocation,
@@ -107,7 +107,7 @@ impl BufferReference {
 pub struct BuffersPoolResource {
     instance: Arc<Instance>,
     device: Arc<Device>,
-    allocator: Arc<Allocator>,
+    allocator: Allocator,
     slots: SlotMap<BufferKey, AllocatedBuffer>,
     staging_buffer_reference: BufferReference,
     upload_command_group: CommandGroup,
@@ -118,7 +118,7 @@ impl BuffersPoolResource {
     pub fn new(
         instance: Arc<Instance>,
         device: Arc<Device>,
-        allocator: Arc<Allocator>,
+        allocator: Allocator,
         upload_command_group: CommandGroup,
         transfer_queue: Queue,
     ) -> Self {
@@ -487,7 +487,7 @@ impl BuffersPoolResource {
                 .unwrap()
         };
 
-        MapppedAllocationHandler::new(self.allocator.clone(), allocated_buffer.allocation, ptr)
+        MapppedAllocationHandler::new(self.allocator, allocated_buffer.allocation, ptr)
     }
 
     pub unsafe fn free_allocations(&mut self) {

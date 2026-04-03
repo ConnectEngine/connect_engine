@@ -53,11 +53,11 @@ fast_image_resize = { version = "6.0.0", features = ["rayon", "image"] }
 padding-struct = "0.2.0"
 bytemuck = "1.25.0"
 num_cpus = "1.17.0"
-vulkan = { package = "vulkanalia", version = "0.35.0", features = [
+vulkan = { package = "vulkanalia", git = "https://github.com/Jerrody/vulkanalia", features = [
     "window",
     "libloading",
 ] }
-vulkan_vma = { package = "vulkanalia-vma", version = "0.9.0" }
+vulkan_vma = { package = "vulkanalia-vma", git = "https://github.com/Jerrody/vulkanalia" }
 slotmap = { git = "https://github.com/Jerrody/slotmap" }
 memmap2 = "0.9.10"
 ahash = "0.8.12"

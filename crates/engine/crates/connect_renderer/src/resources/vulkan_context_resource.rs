@@ -14,7 +14,7 @@ pub struct VulkanContextResource {
     pub surface: SurfaceKHR,
     pub device: Arc<Device>,
     pub physical_device: PhysicalDevice,
-    pub allocator: Arc<Allocator>,
+    pub allocator: Allocator,
     pub graphics_queue: Queue,
     pub transfer_queue: Queue,
     pub queue_family_index: usize,

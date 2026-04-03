@@ -19,7 +19,7 @@ impl Engine {
         let upload_command_group = render_context.upload_context.command_group;
 
         let device = vulkan_context.device.clone();
-        let allocator = vulkan_context.allocator.clone();
+        let allocator = vulkan_context.allocator;
 
         let renderer_resources = RendererResources {
             default_texture_reference: Default::default(),

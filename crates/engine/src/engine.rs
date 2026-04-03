@@ -238,6 +238,7 @@ impl Drop for Engine {
             textures_pool.free_allocations();
             samplers_pool.destroy_samplers();
             descriptor_set_handle.destroy();
+            vulkan_context_resource.allocator.destroy_allocator();
 
             device.destroy_shader_ext(
                 renderer_resources.gradient_compute_shader_object.shader,

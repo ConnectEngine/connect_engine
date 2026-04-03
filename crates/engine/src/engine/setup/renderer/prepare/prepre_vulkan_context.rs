@@ -149,7 +149,7 @@ impl Engine {
 
         let mut allocator_create_info = AllocatorOptions::new(&instance, &device, physical_device);
         allocator_create_info.flags |= AllocatorCreateFlags::BUFFER_DEVICE_ADDRESS;
-        let allocator = unsafe { Arc::new(Allocator::new(&allocator_create_info).unwrap()) };
+        let allocator = unsafe { Allocator::new(&allocator_create_info).unwrap() };
 
         let surface_size = window.surface_size();
         let (swapchain, surface_format) =

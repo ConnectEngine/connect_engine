@@ -36,13 +36,13 @@ impl TextureReference {
 #[derive(Resource)]
 pub struct TexturesPoolResource {
     device: Arc<Device>,
-    allocator: Arc<Allocator>,
+    allocator: Allocator,
     storage_slots: SlotMap<TextureKey, AllocatedImage>,
     sampled_slots: SlotMap<TextureKey, AllocatedImage>,
 }
 
 impl TexturesPoolResource {
-    pub fn new(device: Arc<Device>, allocator: Arc<Allocator>) -> Self {
+    pub fn new(device: Arc<Device>, allocator: Allocator) -> Self {
         Self {
             device,
             allocator,
