@@ -196,8 +196,8 @@ impl Engine {
         enabled_extensions.push(KHR_GET_PHYSICAL_DEVICE_PROPERTIES2_EXTENSION.name.as_ptr());
 
         let app_info = ApplicationInfoBuilder::default()
-            .application_name(b"Hello Triangle/0")
-            .engine_name(b"No Engine/0")
+            .application_name(b"Hello Triangle\0")
+            .engine_name(b"No Engine\0")
             .api_version(Version::V1_4_0.into())
             .build();
 
