@@ -23,7 +23,6 @@ impl Engine {
                     &mut physical_device_properties,
                 );
         }
-        println!("YES");
 
         DevicePropertiesResource {
             descriptor_buffer_properties: descriptor_buffer_properties,

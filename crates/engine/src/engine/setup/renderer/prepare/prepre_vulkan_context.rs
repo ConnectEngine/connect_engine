@@ -324,34 +324,27 @@ impl Engine {
             .queue_priorities(&queue_prio)
             .build()];
 
-        let physical_device_robustness_feature =
+        let mut physical_device_robustness_feature =
             PhysicalDeviceRobustness2FeaturesKHRBuilder::default().null_descriptor(true);
 
         let mut physical_device_unified_image_layouts_feature =
             PhysicalDeviceUnifiedImageLayoutsFeaturesKHRBuilder::default()
                 .unified_image_layouts(true);
-        physical_device_unified_image_layouts_feature.next =
-            physical_device_robustness_feature.next_mut();
 
         let mut physical_device_descriptor_buffer =
             PhysicalDeviceDescriptorBufferFeaturesEXTBuilder::default().descriptor_buffer(true);
-        physical_device_descriptor_buffer.next =
-            physical_device_unified_image_layouts_feature.next_mut();
 
         let mut physical_device_shader_object =
             PhysicalDeviceShaderObjectFeaturesEXTBuilder::default().shader_object(true);
-        physical_device_shader_object.next = physical_device_descriptor_buffer.next_mut();
 
         let mut physical_device_mesh_shader_feature =
             PhysicalDeviceMeshShaderFeaturesEXTBuilder::default()
                 .mesh_shader(true)
                 .task_shader(true);
-        physical_device_mesh_shader_feature.next = physical_device_shader_object.next_mut();
 
         let mut physical_device_features13 = PhysicalDeviceVulkan13FeaturesBuilder::default()
             .synchronization2(true)
             .dynamic_rendering(true);
-        physical_device_features13.next = physical_device_mesh_shader_feature.next_mut();
 
         let mut physical_device_features12 = PhysicalDeviceVulkan12Features::builder()
             .buffer_device_address(true)
@@ -369,7 +362,13 @@ impl Engine {
             .queue_create_infos(&queue_info)
             .enabled_extension_names(&required_extensions)
             .enabled_features(&physical_device_features)
-            .push_next(&mut physical_device_features12);
+            .push_next(&mut physical_device_features12)
+            .push_next(&mut physical_device_features13)
+            .push_next(&mut physical_device_mesh_shader_feature)
+            .push_next(&mut physical_device_shader_object)
+            .push_next(&mut physical_device_descriptor_buffer)
+            .push_next(&mut physical_device_unified_image_layouts_feature)
+            .push_next(&mut physical_device_robustness_feature);
 
         /*         PhysicalDeviceVulkan11Features::default().shader_draw_parameters(true);
         PhysicalDeviceVulkan12Features::default()

@@ -141,7 +141,7 @@ fn create_shaders(device: &Device, shader_infos: &[ShaderInfo]) -> Vec<ShaderObj
             ShaderCreateInfoEXT::builder()
                 .flags(shader_info.flags)
                 .code(shader_code)
-                .name(b"main/0")
+                .name(b"main")
                 .stage(shader_info.stage)
                 .next_stage(shader_info.next_stage)
                 .code_type(ShaderCodeTypeEXT::SPIRV)
