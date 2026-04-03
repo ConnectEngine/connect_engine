@@ -7,12 +7,12 @@ use ktx2_rw::BasisCompressionParams;
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use uuid::{Uuid, uuid};
 use walkdir::WalkDir;
 
-use asset_importer::{Matrix4x4, importer, node::Node, postprocess::PostProcessSteps};
+use asset_importer::{Matrix4x4, node::Node, postprocess::PostProcessSteps};
 use bevy_ecs::{
     resource::Resource,
     system::{Res, ResMut},
@@ -181,7 +181,16 @@ pub fn collect_assets_to_serialize_system(
                 let meta_file =
                     toml::de::from_str::<AssetMetadata>(metadata_content.as_str()).unwrap();
 
-                importer.meta_files.push(meta_file);
+                let is_presented_serialized_asset =
+                    is_presented_serialized_asset(&information, &meta_file);
+
+                if (is_presented_serialized_asset) {
+                    importer.meta_files.push(meta_file);
+                } else {
+                    importer
+                        .assets_to_serialize
+                        .push(entry.path().to_path_buf());
+                }
             } else {
                 importer
                     .assets_to_serialize
@@ -189,6 +198,52 @@ pub fn collect_assets_to_serialize_system(
             }
         }
     }
+}
+
+fn is_presented_serialized_asset(information: &Information, meta_file: &AssetMetadata) -> bool {
+    let is_presented_serialized_asset;
+
+    // FIXME: Temp that Material assets are skipped.
+    if let AssetMetadata::Material(_) = meta_file {
+        is_presented_serialized_asset = true;
+    } else {
+        // FIXME: Move to the constants folder names in artifacts folder.
+        let (serialized_asset_uuid, serialized_asset_name, serialized_asset_folder_name) =
+            match meta_file {
+                AssetMetadata::Model(model_asset_metadata) => (
+                    model_asset_metadata.uuid,
+                    model_asset_metadata.name.as_str(),
+                    "models",
+                ),
+                AssetMetadata::Texture(texture_asset_metadata) => (
+                    texture_asset_metadata.uuid,
+                    texture_asset_metadata.name.as_str(),
+                    "textures",
+                ),
+                AssetMetadata::Material(material_asset_metadata) => (
+                    material_asset_metadata.uuid,
+                    material_asset_metadata.name.as_str(),
+                    "materials",
+                ),
+            };
+        let serialized_asset_uuid_string = serialized_asset_uuid.to_string();
+        let artifacts_shard_name = &serialized_asset_uuid_string[0..2];
+
+        let mut serialized_asset_folder_path_buf = information
+            .get_editor_application()
+            .get_artifacts_folder_path()
+            .to_path_buf();
+        serialized_asset_folder_path_buf.push(serialized_asset_folder_name);
+        serialized_asset_folder_path_buf.push(artifacts_shard_name);
+        serialized_asset_folder_path_buf.push(std::format!(
+            "{serialized_asset_name}_{serialized_asset_uuid_string}",
+        ));
+
+        is_presented_serialized_asset =
+            std::fs::exists(serialized_asset_folder_path_buf).unwrap_or(false);
+    }
+
+    is_presented_serialized_asset
 }
 
 pub fn resolve_assets_entries_system(mut importer: ResMut<Importer>) {
