@@ -1,13 +1,14 @@
-use std::sync::Arc;
+use std::{mem::ManuallyDrop, sync::Arc};
 
 use bevy_ecs::resource::Resource;
-use vulkan::{Device, Instance, vk::*};
+use vulkan::{Device, Entry, Instance, vk::*};
 use vulkan_vma::*;
 
 use crate::{AllocatedImage, BuffersPoolResource, UploadContext, transition_image};
 
 #[derive(Resource)]
 pub struct VulkanContextResource {
+    pub entry: ManuallyDrop<Entry>,
     pub instance: Arc<Instance>,
     pub debug_utils_messenger: Option<DebugUtilsMessengerEXT>,
     pub surface: SurfaceKHR,

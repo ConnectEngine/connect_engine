@@ -2,6 +2,8 @@ mod ecs;
 mod setup;
 mod utils;
 
+use std::mem::ManuallyDrop;
+
 use connect_renderer::*;
 use ecs::*;
 
@@ -288,6 +290,8 @@ impl Drop for Engine {
                 .instance
                 .destroy_surface_khr(vulkan_context_resource.surface, None);
             vulkan_context_resource.instance.destroy_instance(None);
+
+            ManuallyDrop::drop(&mut vulkan_context_resource.entry);
         }
     }
 }

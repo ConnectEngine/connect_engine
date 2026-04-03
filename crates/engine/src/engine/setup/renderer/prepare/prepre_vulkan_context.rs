@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ffi::CStr, sync::Arc};
+use std::{collections::HashSet, ffi::CStr, mem::ManuallyDrop, sync::Arc};
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, WindowHandle};
 use vulkan::{
@@ -156,6 +156,7 @@ impl Engine {
             Self::create_swapchain(&instance, physical_device, &device, surface, surface_size);
 
         VulkanContextResource {
+            entry: ManuallyDrop::new(entry),
             instance,
             debug_utils_messenger,
             surface,
