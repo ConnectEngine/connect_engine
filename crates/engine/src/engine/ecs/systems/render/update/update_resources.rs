@@ -66,7 +66,7 @@ pub fn update_resources_system(
                 ..Default::default()
             },
             directional_light: DirectionalLight {
-                light_color: Vec3::new(0.72, 0.72, 0.93),
+                light_color: Vec3::new(1.0, 0.9, 0.8),
                 light_direction: forward_direction,
                 intensity: 5.0,
                 ..Default::default()
