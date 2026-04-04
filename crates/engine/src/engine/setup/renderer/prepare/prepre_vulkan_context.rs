@@ -205,7 +205,7 @@ impl Engine {
 
         enabled_validation_features.push(ValidationFeatureEnableEXT::SYNCHRONIZATION_VALIDATION);
         enabled_validation_features.push(ValidationFeatureEnableEXT::BEST_PRACTICES);
-        enabled_validation_features.push(ValidationFeatureEnableEXT::DEBUG_PRINTF);
+        //enabled_validation_features.push(ValidationFeatureEnableEXT::DEBUG_PRINTF);
         //enabled_validation_features.push(ValidationFeatureEnableEXT::GpuAssisted);
 
         let mut validation_features = ValidationFeaturesEXTBuilder::default()
@@ -292,7 +292,7 @@ impl Engine {
             KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION.name.as_ptr(),
             EXT_SHADER_OBJECT_EXTENSION.name.as_ptr(),
             EXT_MESH_SHADER_EXTENSION.name.as_ptr(),
-            KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION.name.as_ptr(),
+            //KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION.name.as_ptr(),
         ];
         let mut missing_extensions: HashSet<&CStr> = required_extensions
             .iter()
