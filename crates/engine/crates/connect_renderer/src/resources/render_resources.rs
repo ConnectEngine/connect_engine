@@ -21,6 +21,7 @@ pub struct MeshObject {
 #[derive(Default, Clone, Copy, Pod, Zeroable)]
 pub struct InstanceObject {
     pub model_matrix: [f32; 16],
+    pub normal_matrix: [f32; 16],
     pub device_address_mesh_object: DeviceAddress,
     pub device_address_material_data: DeviceAddress,
     pub meshlet_count: u32,

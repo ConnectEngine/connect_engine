@@ -48,6 +48,7 @@ func main(
         let v = ptr_mesh_object.vertices[globalVertexId];
         outVerts[group_index] = process_vertex(v,
                                                instance_object.model_matrix,
+                                               instance_object.normal_matrix,
                                                push_constants.ptr_scene_data.camera_view_matrix);
     }
 
@@ -65,12 +66,18 @@ func main(
 }
 
 [ForceInline]
-func process_vertex(const v: Vertex, const model_matrix: float4x4, const view_projection_matrix: float4x4)->VertexOutput
+func process_vertex(const v: Vertex,
+                    const model_matrix: float4x4,
+                    const normal_matrix: float4x4,
+                    const view_projection_matrix: float4x4)
+    ->VertexOutput
 {
     let position = float4(v.position, 1.0);
     let world_position = mul(model_matrix, position);
     let clip_position = mul(view_projection_matrix, world_position);
-    let normal = mul(model_matrix, float4(v.normal, 1.0)).xyz;
+
+    let N_matrix = float3x3(normal_matrix[0].xyz, normal_matrix[1].xyz, normal_matrix[2].xyz);
+    let normal = mul(N_matrix, v.normal).xyz;
 
     let vertex_output : VertexOutput = VertexOutput(clip_position, normal, v.uv, v.color, world_position.xyz);
 
@@ -89,9 +96,12 @@ func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData
     let light_properties = scene_data.light_properties;
     let directional_light = scene_data.directional_light;
 
+    let L_unnormalized = directional_light.light_position - vertex_output.world_position;
+    let distance = length(L_unnormalized);
+
     let N = normalize(vertex_output.normal);
     let V = normalize(scene_data.camera_position - vertex_output.world_position);
-    let L = normalize(directional_light.light_position);
+    let L = L_unnormalized / distance;
 
     var color = brdf(surface_data.color.rgb, N, V, L, surface_data.metallic, max(surface_data.roughness, 0.045), directional_light);
 

@@ -30,8 +30,11 @@ pub fn collect_instance_objects_system(
                 .unwrap_unchecked()
         };
 
+        let model_matrix = global_transform.0;
+        let normal_matrix = model_matrix.inverse().transpose();
         instance_objects_buffer.add_instance_object(InstanceObject {
-            model_matrix: global_transform.0.to_cols_array(),
+            model_matrix: model_matrix.to_cols_array(),
+            normal_matrix: normal_matrix.to_cols_array(),
             device_address_mesh_object: mesh_buffer.mesh_object_device_address,
             device_address_material_data: material_info.device_adddress_material_data,
             meshlet_count: mesh_buffer.meshlets_count as _,

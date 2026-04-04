@@ -53,6 +53,7 @@ struct MeshObject
 struct InstanceObject
 {
     const let model_matrix : float4x4;
+    const let normal_matrix : float4x4;
     const let ptr_mesh_object : ImmutablePtr<MeshObject>;
     const let device_address_material : ImmutablePtr<Material>;
     const let meshlet_count : uint32_t;
@@ -67,8 +68,8 @@ struct Payload
 struct SurfaceData
 {
     var color : float4 = float4(1.0);
-    var metallic: float32_t = 0.0;
-    var roughness: float32_t = 0.0;
+    var metallic : float32_t = 0.0;
+    var roughness : float32_t = 0.0;
 }
 
 interface IMaterial
