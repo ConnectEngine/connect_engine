@@ -205,7 +205,7 @@ impl Engine {
 
         enabled_validation_features.push(ValidationFeatureEnableEXT::SYNCHRONIZATION_VALIDATION);
         enabled_validation_features.push(ValidationFeatureEnableEXT::BEST_PRACTICES);
-        //enabled_validation_features.push(ValidationFeatureEnableEXT::DebugPrintf);
+        enabled_validation_features.push(ValidationFeatureEnableEXT::DEBUG_PRINTF);
         //enabled_validation_features.push(ValidationFeatureEnableEXT::GpuAssisted);
 
         let mut validation_features = ValidationFeaturesEXTBuilder::default()
@@ -275,15 +275,13 @@ impl Engine {
                 .enumerate()
                 .find(|(queue, props)| {
                     props.queue_flags.contains(QueueFlags::GRAPHICS)
-                        && unsafe {
-                            instance
-                                .get_physical_device_surface_support_khr(
-                                    physical_device,
-                                    *queue as u32,
-                                    *surface,
-                                )
-                                .is_ok_and(|supported| supported)
-                        }
+                        && instance
+                            .get_physical_device_surface_support_khr(
+                                physical_device,
+                                *queue as u32,
+                                *surface,
+                            )
+                            .is_ok_and(|supported| supported)
                 })
                 .unwrap()
         };
@@ -294,7 +292,7 @@ impl Engine {
             KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION.name.as_ptr(),
             EXT_SHADER_OBJECT_EXTENSION.name.as_ptr(),
             EXT_MESH_SHADER_EXTENSION.name.as_ptr(),
-            // KHR_SHADER_NON_SEMANTIC_INFO.name,
+            KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION.name.as_ptr(),
         ];
         let mut missing_extensions: HashSet<&CStr> = required_extensions
             .iter()
@@ -369,26 +367,6 @@ impl Engine {
             .push_next(&mut physical_device_descriptor_buffer)
             .push_next(&mut physical_device_unified_image_layouts_feature)
             .push_next(&mut physical_device_robustness_feature);
-
-        /*         PhysicalDeviceVulkan11Features::default().shader_draw_parameters(true);
-        PhysicalDeviceVulkan12Features::default()
-            .buffer_device_address(true)
-            .scalar_block_layout(true)
-            .storage_push_constant8(true)
-            .shader_int8(true)
-            .descriptor_binding_partially_bound(true)
-            .descriptor_binding_variable_descriptor_count(true)
-            .runtime_descriptor_array(true);
-        PhysicalDeviceVulkan13Features::default()
-            .synchronization2(true)
-            .dynamic_rendering(true);
-        PhysicalDeviceRobustness2FeaturesKHR::default().null_descriptor(true);
-        PhysicalDeviceUnifiedImageLayoutsFeaturesKHR::default().unified_image_layouts(true);
-        PhysicalDeviceDescriptorBufferFeaturesEXT::default().descriptor_buffer(true);
-        PhysicalDeviceShaderObjectFeaturesEXT::default().shader_object(true);
-        PhysicalDeviceMeshShaderFeaturesEXT::default()
-            .mesh_shader(true)
-            .task_shader(true); */
 
         let device = unsafe {
             Arc::new(

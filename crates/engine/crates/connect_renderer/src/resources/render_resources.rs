@@ -59,12 +59,24 @@ pub struct LightProperties {
     pub specular_strength: f32,
 }
 
+#[allow(dead_code)]
 #[repr(C)]
 #[padding_struct]
 #[derive(Default, Clone, Copy, Pod, Zeroable)]
 pub struct PointLight {
     pub light_color: Vec3,
     pub light_position: Vec3,
+    pub intensity: f32,
+    pub influence_radius: f32,
+    pub source_radius: f32,
+}
+
+#[repr(C)]
+#[padding_struct]
+#[derive(Default, Clone, Copy, Pod, Zeroable)]
+pub struct DirectionalLight {
+    pub light_color: Vec3,
+    pub light_direction: Vec3,
     pub intensity: f32,
 }
 
@@ -75,7 +87,8 @@ pub struct SceneData {
     pub camera_view_matrix: [f32; 16],
     pub camera_position: Vec3,
     pub light_properties: LightProperties,
-    pub point_light: PointLight,
+    //pub point_light: PointLight,
+    pub directional_light: DirectionalLight,
 }
 
 pub struct SwappableBuffer<T: NoUninit + Pod + Sized> {

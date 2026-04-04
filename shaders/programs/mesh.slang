@@ -94,13 +94,41 @@ func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData
     var surface_data = material.eval(SurfaceData(), vertex_output.uv);
 
     let light_properties = scene_data.light_properties;
+    let directional_light = scene_data.directional_light;
+
+    let N = normalize(vertex_output.normal);
+    let V = normalize(scene_data.camera_position - vertex_output.world_position);
+    let L = normalize(-directional_light.light_direction);
+
+    let radiance = directional_light.light_color * directional_light.intensity;
+
+    var color = brdf(surface_data.color.rgb, N, V, L, surface_data.metallic, max(surface_data.roughness, 0.045), radiance);
+
+    let ambient = surface_data.color.rgb * light_properties.ambient_color.rgb * light_properties.ambient_strength;
+    color += ambient;
+
+    color = color / (color + float3(1.0));
+    color = pow(color, float3(1.0 / 2.2));
+
+    return float4(color, surface_data.color.a);
+}
+
+// NOTE: POINT LIGHT
+/* [shader("fragment")]
+func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData)->float4
+{
+    let scene_data = push_constants.ptr_scene_data;
+    let material = primitive_data.device_address_material;
+    var surface_data = material.eval(SurfaceData(), vertex_output.uv);
+
+    let light_properties = scene_data.light_properties;
     let point_light = scene_data.point_light;
 
     let L_unnormalized = point_light.light_position - vertex_output.world_position;
     let distance = length(L_unnormalized);
 
-    // 1000.0 is a distance in meters.
     let distance_in_meters = distance / 100000.0;
+    let distance_squared = dot(L_unnormalized, L_unnormalized);
 
     let N = normalize(vertex_output.normal);
     let V = normalize(scene_data.camera_position - vertex_output.world_position);
@@ -108,7 +136,17 @@ func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData
 
     let luminous_intensity = point_light.intensity / (4.0 * float32_t.getPi());
 
-    var attenuation = 1.0 / max((distance_in_meters * distance_in_meters), 0.0001);
+    let influence_radius_squared = point_light.influence_radius * point_light.influence_radius;
+    let distance_ratio_squared = distance_squared / max(influence_radius_squared, 0.0001);
+    let distance_ratio_quad = distance_ratio_squared * distance_ratio_squared;
+
+    let window_function = saturate(1.0 - distance_ratio_quad);
+    let window_function_squared = window_function * window_function;
+
+    let source_radius_squared = point_light.source_radius * point_light.source_radius;
+    let inverse_square_falloff = 1.0 / max((distance_squared + source_radius_squared), 0.0001);
+
+    var attenuation = window_function_squared * inverse_square_falloff;
 
     let radiance = point_light.light_color * luminous_intensity * attenuation;
 
@@ -124,7 +162,7 @@ func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData
     color = pow(color, float3(1.0 / 2.2));
 
     return float4(color, surface_data.color.a);
-}
+} */
 
 [ForceInline]
 func brdf(const albedo: float3,

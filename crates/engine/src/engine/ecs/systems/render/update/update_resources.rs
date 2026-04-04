@@ -51,6 +51,11 @@ pub fn update_resources_system(
                 .unwrap_unchecked()
         };
 
+        // NOTE: Tilted down 45 degrees.
+        let light_rotation = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4);
+
+        let forward_direction = light_rotation * Vec3::new(0.0, 0.0, -1.0);
+
         let scene_data = SceneData {
             camera_view_matrix: frame_context.world_matrix.to_cols_array(),
             camera_position,
@@ -60,10 +65,10 @@ pub fn update_resources_system(
                 specular_strength: 0.7,
                 ..Default::default()
             },
-            point_light: PointLight {
+            directional_light: DirectionalLight {
                 light_color: Vec3::new(0.72, 0.72, 0.93),
-                light_position: Vec3::new(0.0, 1000.0, 5.0),
-                intensity: 15_000.0,
+                light_direction: forward_direction,
+                intensity: 5.0,
                 ..Default::default()
             },
             ..Default::default()
