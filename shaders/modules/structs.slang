@@ -132,11 +132,11 @@ struct LightProperties
     let _padding : float2;
 }
 
-struct DirectionalLight
+struct PointLight
 {
     let light_color : float3;
     let light_position : float3;
-    let _padding : float2;
+    let intensity : float32_t;
 }
 
 struct SceneData
@@ -145,7 +145,7 @@ struct SceneData
     let camera_position : float3;
     let _padding : float32_t;
     let light_properties : LightProperties;
-    let directional_light : DirectionalLight;
+    let point_light : PointLight;
 }
 
 struct GlobalPushConstants

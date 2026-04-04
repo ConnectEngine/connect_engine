@@ -60,9 +60,10 @@ pub fn update_resources_system(
                 specular_strength: 0.7,
                 ..Default::default()
             },
-            directional_light: DirectionalLight {
+            point_light: PointLight {
                 light_color: Vec3::new(0.72, 0.72, 0.93),
-                light_position: Vec3::new(0.0, 100.0, 300.0),
+                light_position: Vec3::new(0.0, 1000.0, 5.0),
+                intensity: 15_000.0,
                 ..Default::default()
             },
             ..Default::default()

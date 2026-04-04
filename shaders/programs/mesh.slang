@@ -94,16 +94,31 @@ func main(const vertex_output: VertexOutput, const primitive_data: PrimitiveData
     var surface_data = material.eval(SurfaceData(), vertex_output.uv);
 
     let light_properties = scene_data.light_properties;
-    let directional_light = scene_data.directional_light;
+    let point_light = scene_data.point_light;
 
-    let L_unnormalized = directional_light.light_position - vertex_output.world_position;
+    let L_unnormalized = point_light.light_position - vertex_output.world_position;
     let distance = length(L_unnormalized);
+
+    // 1000.0 is a distance in meters.
+    let distance_in_meters = distance / 100000.0;
 
     let N = normalize(vertex_output.normal);
     let V = normalize(scene_data.camera_position - vertex_output.world_position);
     let L = L_unnormalized / distance;
 
-    var color = brdf(surface_data.color.rgb, N, V, L, surface_data.metallic, max(surface_data.roughness, 0.045), directional_light);
+    let luminous_intensity = point_light.intensity / (4.0 * float32_t.getPi());
+
+    var attenuation = 1.0 / max((distance_in_meters * distance_in_meters), 0.0001);
+
+    let radiance = point_light.light_color * luminous_intensity * attenuation;
+
+    var color = brdf(surface_data.color.rgb, N, V, L, surface_data.metallic, max(surface_data.roughness, 0.045), radiance);
+
+    attenuation = 1.0 / max((distance * distance), 0.0001);
+    color *= attenuation;
+
+    let ambient = surface_data.color.rgb * light_properties.ambient_color.rgb * light_properties.ambient_strength;
+    color += ambient;
 
     color = color / (color + float3(1.0));
     color = pow(color, float3(1.0 / 2.2));
@@ -118,7 +133,7 @@ func brdf(const albedo: float3,
           const L: float3,
           const metallic: float32_t,
           const roughness: float32_t,
-          const light: DirectionalLight)
+          const radiance: float3)
     ->float3
 {
     let H = normalize(L + V);
@@ -143,7 +158,6 @@ func brdf(const albedo: float3,
     let kS = F;
     let kD = (1.0 - kS) * (1.0 - metallic);
 
-    let radiance = light.light_color * 3.0;
     let color = (kD * Fd + Fr) * radiance * NoL;
 
     return color;
