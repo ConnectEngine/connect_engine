@@ -2,9 +2,6 @@ use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
 use connect_shared::{TextureFormat, TextureKey, TextureMetadata};
-use fast_image_resize::{PixelType, images::Image};
-use image::EncodableLayout;
-use ktx2_rw::{BasisCompressionParams, Ktx2Texture};
 use slotmap::{Key, SlotMap};
 use vulkan::{Device, vk::*};
 use vulkan_vma::*;
@@ -53,13 +50,11 @@ impl TexturesPoolResource {
 
     pub fn create_texture(
         &mut self,
-        data: Option<&mut [u8]>,
-        is_cached: bool,
         format: Format,
         extent: Extent3D,
         usage_flags: ImageUsageFlags,
         mip_map_enabled: bool,
-    ) -> (TextureReference, Option<Ktx2Texture>) {
+    ) -> TextureReference {
         let read_only = usage_flags.contains(ImageUsageFlags::SAMPLED);
 
         let mut aspect_flags = ImageAspectFlags::COLOR;
@@ -76,118 +71,16 @@ impl TexturesPoolResource {
             1
         };
 
-        let texture_metadata = TextureMetadata {
+        // TODO: STORE INFO
+        /* let texture_metadata = TextureMetadata {
             width: extent.width,
             height: extent.height,
             mip_levels_count,
             texture_format: TextureFormat::try_from(format).unwrap(),
             ..Default::default()
-        };
+        }; */
 
-        let mut ktx_texture = None;
-        if Self::is_compressed_image_format(format)
-            // TODO: Make it more flexible and less error prone.
-            && !is_cached
-            && let Some(data) = data
-        {
-            let target_ktx_format = match format {
-                Format::BC3_SRGB_BLOCK | Format::BC1_RGB_SRGB_BLOCK => {
-                    ktx2_rw::VkFormat::R8G8B8A8_SRGB
-                }
-                _ => panic!("Unsupported KTX format: {:?}!", format),
-            };
-
-            let mut texture = Ktx2Texture::create(
-                texture_metadata.width,
-                texture_metadata.height,
-                1,
-                1,
-                1,
-                mip_levels_count,
-                target_ktx_format,
-            )
-            .unwrap();
-
-            let src_image = match format {
-                Format::BC3_SRGB_BLOCK => Image::from_slice_u8(
-                    texture_metadata.width,
-                    texture_metadata.height,
-                    data,
-                    PixelType::U8x4,
-                )
-                .unwrap(),
-                Format::BC1_RGB_SRGB_BLOCK => Image::from_slice_u8(
-                    texture_metadata.width,
-                    texture_metadata.height,
-                    data,
-                    PixelType::U8x4,
-                )
-                .unwrap(),
-                _ => panic!("Unsupported Image format: {:?}!", format),
-            };
-
-            // TODO: We can effectively pre-allocate required total size of texture_data
-            let mut texture_data = Vec::new();
-            for mip_level_index in 0..mip_levels_count {
-                let current_width = (texture_metadata.width >> mip_level_index).max(1);
-                let current_height = (texture_metadata.height >> mip_level_index).max(1);
-
-                let mut resizer = fast_image_resize::Resizer::new();
-                unsafe {
-                    resizer.set_cpu_extensions(fast_image_resize::CpuExtensions::Avx2);
-                }
-
-                let mut dst_image = fast_image_resize::images::Image::new(
-                    current_width,
-                    current_height,
-                    src_image.pixel_type(),
-                );
-
-                resizer.resize(&src_image, &mut dst_image, None).unwrap();
-
-                let image_bytes = dst_image.buffer();
-
-                texture
-                    .set_image_data(mip_level_index, 0, 0, image_bytes)
-                    .unwrap();
-            }
-
-            texture
-                .compress_basis(
-                    &BasisCompressionParams::builder()
-                        .thread_count((num_cpus::get() - 1) as _)
-                        .build(),
-                )
-                .unwrap();
-
-            let transcode_format = match format {
-                Format::BC1_RGBA_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc1Rgb,
-                Format::BC3_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc3Rgba,
-                Format::BC7_SRGB_BLOCK => ktx2_rw::TranscodeFormat::Bc7Rgba,
-                _ => panic!("Unsupported transcode format!"),
-            };
-
-            texture.transcode_basis(transcode_format).unwrap();
-
-            for mip_level_index in 0..mip_levels_count {
-                let texture_data_ref = texture.get_image_data(mip_level_index, 0, 0).unwrap();
-                texture_data.extend_from_slice(texture_data_ref);
-            }
-
-            let texture_metadata_raw =
-                rkyv::to_bytes::<rkyv::rancor::Error>(&texture_metadata).unwrap();
-            // FIXME: Temp, later will be removed.
-            texture
-                .set_metadata(
-                    stringify!(TextureMetadata),
-                    &texture_metadata_raw.as_bytes(),
-                )
-                .unwrap();
-
-            ktx_texture = Some(texture);
-        }
-
-        let uploaded_texture = self.upload_texture(
+        let texture_reference = self.upload_texture(
             format,
             extent,
             usage_flags,
@@ -196,7 +89,7 @@ impl TexturesPoolResource {
             read_only,
         );
 
-        (uploaded_texture, ktx_texture)
+        texture_reference
     }
 
     #[must_use]

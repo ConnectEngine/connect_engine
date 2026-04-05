@@ -1,14 +1,14 @@
 use connect_information::Information;
 use connect_renderer::*;
 use connect_shared::*;
-use fast_image_resize::{PixelType, images::Image};
-use image::{EncodableLayout, ImageReader};
-use ktx2_rw::BasisCompressionParams;
+use image::{EncodableLayout, GenericImageView, ImageReader};
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
+use texture_compressor::*;
+use texture_downsampler::*;
 use uuid::{Uuid, uuid};
 use walkdir::WalkDir;
 
@@ -184,7 +184,7 @@ pub fn collect_assets_to_serialize_system(
                 let is_presented_serialized_asset =
                     is_presented_serialized_asset(&information, &meta_file);
 
-                if (is_presented_serialized_asset) {
+                if is_presented_serialized_asset {
                     importer.meta_files.push(meta_file);
                 } else {
                     importer
@@ -859,11 +859,14 @@ fn serialize_texture_asset(
         .decode()
         .unwrap();
 
-    let width = image.width();
-    let height = image.height();
-
-    let rgba_image = image.to_rgba8();
-    let mut image_bytes = rgba_image.as_bytes().to_vec();
+    let (width, height) = image.dimensions();
+    let rgba_image = image.into_rgb8();
+    let image = Image::new(
+        &rgba_image,
+        width,
+        height,
+        texture_downsampler::AlbedoFormat::Srgba8,
+    );
 
     // TODO: Assume that mip-map enabled by default.
     let mip_map_enabled = true;
@@ -874,71 +877,28 @@ fn serialize_texture_asset(
         1
     };
 
-    let target_ktx_format = match texture_entry.format {
-        TextureFormat::Bc1 | TextureFormat::Bc3 => ktx2_rw::VkFormat::R8G8B8A8_SRGB,
-        _ => panic!("Unsupported KTX format: {:?}!", texture_entry.format),
-    };
-
-    let mut ktx_texture =
-        ktx2_rw::Ktx2Texture::create(width, height, 1, 1, 1, mip_levels_count, target_ktx_format)
-            .unwrap();
-
-    let src_image = match texture_entry.format {
-        TextureFormat::Bc3 => {
-            Image::from_slice_u8(width, height, &mut image_bytes, PixelType::U8x4).unwrap()
-        }
-        TextureFormat::Bc1 => {
-            Image::from_slice_u8(width, height, &mut image_bytes, PixelType::U8x4).unwrap()
-        }
-        _ => panic!("Unsupported Image format: {:?}!", texture_entry.format),
-    };
-
-    // TODO: We can effectively pre-allocate required total size of texture_data
-    let mut texture_data = Vec::new();
+    let mut texture_mip_maps = Vec::with_capacity(mip_levels_count as usize);
+    // TODO: Currently, we assume only BC1.
     for mip_level_index in 0..mip_levels_count {
         let current_width = (width >> mip_level_index).max(1);
         let current_height = (height >> mip_level_index).max(1);
 
-        let mut resizer = fast_image_resize::Resizer::new();
-        unsafe {
-            resizer.set_cpu_extensions(fast_image_resize::CpuExtensions::Avx2);
-        }
+        let downsampled_image = downsample(&image, current_width, current_height);
+        let rgba_surface = RgbaSurface {
+            data: &downsampled_image,
+            width,
+            height,
+            stride: width * 4,
+        };
 
-        let mut dst_image = fast_image_resize::images::Image::new(
-            current_width,
-            current_height,
-            src_image.pixel_type(),
-        );
+        let compressed_image = bc1::compress_blocks(&rgba_surface);
+        let texture_mip_map = TextureMipMap {
+            data: compressed_image,
+            width,
+            height,
+        };
 
-        resizer.resize(&src_image, &mut dst_image, None).unwrap();
-
-        let image_bytes = dst_image.buffer();
-
-        ktx_texture
-            .set_image_data(mip_level_index, 0, 0, image_bytes)
-            .unwrap();
-    }
-
-    ktx_texture
-        .compress_basis(
-            &BasisCompressionParams::builder()
-                .thread_count((num_cpus::get() - 1) as _)
-                .build(),
-        )
-        .unwrap();
-
-    let transcode_format = match texture_entry.format {
-        TextureFormat::Bc1 => ktx2_rw::TranscodeFormat::Bc1Rgb,
-        TextureFormat::Bc3 => ktx2_rw::TranscodeFormat::Bc3Rgba,
-        TextureFormat::Bc7 => ktx2_rw::TranscodeFormat::Bc7Rgba,
-        _ => panic!("Unsupported transcode format!"),
-    };
-
-    ktx_texture.transcode_basis(transcode_format).unwrap();
-
-    for mip_level_index in 0..mip_levels_count {
-        let texture_data_ref = ktx_texture.get_image_data(mip_level_index, 0, 0).unwrap();
-        texture_data.extend_from_slice(texture_data_ref);
+        texture_mip_maps.push(texture_mip_map);
     }
 
     let texture_metadata = TextureMetadata {
@@ -948,18 +908,13 @@ fn serialize_texture_asset(
         mip_levels_count,
         ..Default::default()
     };
-    let texture_metadata_raw = &rkyv::to_bytes::<rkyv::rancor::Error>(&texture_metadata).unwrap();
 
-    ktx_texture
-        .set_metadata(
-            stringify!(TextureMetadata),
-            &texture_metadata_raw.as_bytes(),
-        )
-        .unwrap();
-
-    for mip_level_index in 0..mip_levels_count {
-        texture_data.extend_from_slice(ktx_texture.get_image_data(mip_level_index, 0, 0).unwrap());
-    }
+    let serialized_texture = SerializedTexture {
+        texture_metadata,
+        texture_mip_maps,
+    };
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&serialized_texture)
+        .expect("Failed to serialize model.");
 
     let relative_path = texture_entry
         .entry
@@ -986,9 +941,8 @@ fn serialize_texture_asset(
         .join(std::format!("{}_{}", texture_entry.entry.name, uuid))
         .clone();
 
-    ktx_texture
-        .write_to_file(serialized_texture_path_buffer.as_path())
-        .unwrap();
+    std::fs::write(serialized_texture_path_buffer, bytes).unwrap();
+
     let texture_asset_metadata = TextureAssetMetadata {
         uuid,
         name: texture_entry.entry.name.clone(),

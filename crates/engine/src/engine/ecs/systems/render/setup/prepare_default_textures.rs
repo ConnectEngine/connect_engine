@@ -30,9 +30,7 @@ pub fn prepare_default_textures_system(
         height: 16,
         depth: 1,
     };
-    let (checkerboard_texture_reference, _) = textures_pool.create_texture(
-        None,
-        false,
+    let checkerboard_texture_reference = textures_pool.create_texture(
         Format::R8G8B8A8_UNORM,
         checkerboard_image_extent,
         ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
@@ -64,9 +62,7 @@ pub fn prepare_default_textures_system(
         height: 1,
         depth: 1,
     };
-    let (white_texture_reference, _) = textures_pool.create_texture(
-        None,
-        false,
+    let white_texture_reference = textures_pool.create_texture(
         Format::R8G8B8A8_SRGB,
         white_image_extent,
         ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
@@ -103,9 +99,7 @@ pub fn prepare_default_textures_system(
                 depth: 1,
             };
 
-            let (draw_texture_reference, _) = textures_pool.create_texture(
-                None,
-                false,
+            let draw_texture_reference = textures_pool.create_texture(
                 Format::R16G16B16A16_SFLOAT,
                 draw_image_extent,
                 ImageUsageFlags::TRANSFER_SRC
@@ -114,9 +108,7 @@ pub fn prepare_default_textures_system(
                 false,
             );
 
-            let (depth_texture_reference, _) = textures_pool.create_texture(
-                None,
-                false,
+            let depth_texture_reference = textures_pool.create_texture(
                 Format::D32_SFLOAT,
                 draw_image_extent,
                 ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,

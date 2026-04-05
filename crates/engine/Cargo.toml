@@ -20,18 +20,12 @@ rayon = { workspace = true }
 bevy_ecs = { workspace = true }
 winit = { workspace = true }
 rapier3d = { workspace = true }
-asset-importer = { workspace = true }
-image = { workspace = true }
-ktx2-rw = { workspace = true }
-fast_image_resize = { workspace = true }
 meshopt = { workspace = true }
 padding-struct = { workspace = true }
 bytemuck = { workspace = true }
-num_cpus = { workspace = true }
 slotmap = { workspace = true }
 vulkan = { workspace = true }
 vulkan_vma = { workspace = true }
-rkyv = { workspace = true }
 
 raw-window-handle = "0.6.2"
 

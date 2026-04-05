@@ -40,6 +40,20 @@ pub struct TextureMetadata {
     pub mip_levels_count: u32,
 }
 
+#[repr(C)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct TextureMipMap {
+    pub data: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct SerializedTexture {
+    pub texture_metadata: TextureMetadata,
+    pub texture_mip_maps: Vec<TextureMipMap>,
+}
+
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedHierarchy {
     pub serialized_nodes: Vec<SerializedNode>,
@@ -63,11 +77,6 @@ pub struct SerializedModelResult {
 pub struct SerializedModel {
     pub meshes: Vec<SerializedMesh>,
     pub hierarchy: SerializedHierarchy,
-}
-
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
-pub struct SerializedTexture {
-    pub data: Vec<u8>,
 }
 
 #[repr(C)]
