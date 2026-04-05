@@ -510,20 +510,17 @@ impl Loader {
             std::fs::File::open(&found_texture.artifacts_path_buf).unwrap();
         let serialized_texture_map = unsafe { Mmap::map(&serialized_texture_file).unwrap() };
 
-        let ktx_texture = ktx2_rw::Ktx2Texture::from_memory(&serialized_texture_map).unwrap();
-
-        let texture_metadata_raw = ktx_texture
-            .get_metadata(stringify!(TextureMetadata))
-            .unwrap();
-
-        let archived_texture_metadata =
-            rkyv::access::<ArchivedTextureMetadata, rkyv::rancor::Error>(&texture_metadata_raw)
+        let archived_serialized_texture =
+            rkyv::access::<ArchivedSerializedTexture, rkyv::rancor::Error>(&serialized_texture_map)
                 .unwrap();
+
+        let archived_texture_metadata = &archived_serialized_texture.texture_metadata;
 
         let mut texture_data = Vec::new();
         for mip_level_index in 0..archived_texture_metadata.mip_levels_count.to_native() {
-            texture_data
-                .extend_from_slice(ktx_texture.get_image_data(mip_level_index, 0, 0).unwrap());
+            texture_data.extend_from_slice(
+                &archived_serialized_texture.texture_mip_maps[mip_level_index as usize].data,
+            );
         }
 
         let texture_metadata =

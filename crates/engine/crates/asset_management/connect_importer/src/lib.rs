@@ -865,7 +865,7 @@ fn serialize_texture_asset(
         &rgba_image,
         width,
         height,
-        texture_downsampler::AlbedoFormat::Srgba8,
+        texture_downsampler::AlbedoFormat::Srgb8,
     );
 
     // TODO: Assume that mip-map enabled by default.
@@ -878,25 +878,17 @@ fn serialize_texture_asset(
     };
 
     let mut texture_mip_maps = Vec::with_capacity(mip_levels_count as usize);
+    let texture_mip_map = compress_texture(rgba_image.as_bytes(), width, height);
+
+    texture_mip_maps.push(texture_mip_map);
+
     // TODO: Currently, we assume only BC1.
-    for mip_level_index in 0..mip_levels_count {
+    for mip_level_index in 1..mip_levels_count {
         let current_width = (width >> mip_level_index).max(1);
         let current_height = (height >> mip_level_index).max(1);
 
         let downsampled_image = downsample(&image, current_width, current_height);
-        let rgba_surface = RgbaSurface {
-            data: &downsampled_image,
-            width,
-            height,
-            stride: width * 4,
-        };
-
-        let compressed_image = bc1::compress_blocks(&rgba_surface);
-        let texture_mip_map = TextureMipMap {
-            data: compressed_image,
-            width,
-            height,
-        };
+        let texture_mip_map = compress_texture(&downsampled_image, current_width, current_height);
 
         texture_mip_maps.push(texture_mip_map);
     }
@@ -963,6 +955,22 @@ fn serialize_texture_asset(
     .unwrap();
 
     texture_asset_metadata
+}
+
+fn compress_texture(data: &[u8], width: u32, height: u32) -> TextureMipMap {
+    let rgba_surface = RgbaSurface {
+        data,
+        width,
+        height,
+        stride: width * 3,
+    };
+
+    let compressed_image = bc1::compress_blocks(&rgba_surface);
+    TextureMipMap {
+        data: compressed_image,
+        width,
+        height,
+    }
 }
 
 fn is_material_transparent(material: &asset_importer::Material) -> bool {
