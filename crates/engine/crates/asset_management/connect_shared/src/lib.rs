@@ -201,7 +201,7 @@ impl TryFrom<Format> for TextureFormat {
             Format::BC3_SRGB_BLOCK => Ok(TextureFormat::Bc3),
             Format::BC4_UNORM_BLOCK => Ok(TextureFormat::Bc4),
             Format::BC5_UNORM_BLOCK => Ok(TextureFormat::Bc5),
-            Format::BC6H_SFLOAT_BLOCK => Ok(TextureFormat::Bc6H),
+            Format::BC6H_UFLOAT_BLOCK => Ok(TextureFormat::Bc6H),
             Format::BC7_SRGB_BLOCK => Ok(TextureFormat::Bc7),
             _ => Err(v),
         }
@@ -222,7 +222,7 @@ impl TryInto<Format> for TextureFormat {
             TextureFormat::Bc3 => Ok(Format::BC3_SRGB_BLOCK),
             TextureFormat::Bc4 => Ok(Format::BC4_UNORM_BLOCK),
             TextureFormat::Bc5 => Ok(Format::BC5_UNORM_BLOCK),
-            TextureFormat::Bc6H => Ok(Format::BC6H_SFLOAT_BLOCK),
+            TextureFormat::Bc6H => Ok(Format::BC6H_UFLOAT_BLOCK),
             TextureFormat::Bc7 => Ok(Format::BC7_SRGB_BLOCK),
         }
     }

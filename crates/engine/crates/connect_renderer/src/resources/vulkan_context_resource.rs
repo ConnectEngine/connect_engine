@@ -45,9 +45,17 @@ impl VulkanContextResource {
                 .unwrap();
         }
 
+        // TODO: We assume, that we have loaded only BC1 and BC6H textures.
+        let block_size_in_bytes = match allocated_image.format {
+            Format::BC6H_UFLOAT_BLOCK => 16,
+            _ => 8,
+        };
+
         let size = match size {
             Some(size) => size,
-            None => (texture_metadata.width * texture_metadata.height * 8) as usize,
+            None => {
+                (texture_metadata.width * texture_metadata.height * block_size_in_bytes) as usize
+            }
         };
 
         let staging_buffer_reference = buffers_pool.get_staging_buffer_reference();
@@ -99,10 +107,8 @@ impl VulkanContextResource {
             let blocks_wide = mip_width.div_ceil(4);
             let blocks_high = mip_height.div_ceil(4);
 
-            let block_size_in_bytes = 8;
-
             let current_mip_size =
-                (blocks_wide * blocks_high) as u64 * block_size_in_bytes * mip_depth as u64;
+                (blocks_wide * blocks_high) as u64 * block_size_in_bytes as u64 * mip_depth as u64;
 
             current_buffer_offset += current_mip_size;
 

@@ -408,6 +408,20 @@ impl Loader {
 
             commands.trigger(spawn_event);
         });
+
+        self.textures_to_load.iter().for_each(|texture_to_load| {
+            // FIXME: We, occasionaly, upload textures twice, which are associated with model assets.
+            // Load Models Assets -> Load required textures -> Load Standalone textures -> load again those standalone textures (duplication).
+            self.load_texture(
+                asset_database,
+                vulkan_context_resource,
+                renderer_context_resource,
+                descriptor_set_handle,
+                textures_pool,
+                buffers_pool,
+                texture_to_load.uuid,
+            );
+        });
     }
 
     fn load_material(
@@ -463,7 +477,7 @@ impl Loader {
 
         let mut material_data =
             *bytemuck::from_bytes::<MaterialData>(&archived_serialized_material.data);
-        // FIXME: Straightforward implementation of data patching.
+        // FIXME: Straightforward implementation of data patching. But in production-ready Engine, it's not.
         material_data.material_textures.albedo_texture_index = loaded_textures[0].get_index();
         material_data.material_textures.metallic_texture_index =
             renderer_resources.fallback_texture_reference.get_index();
@@ -489,7 +503,7 @@ impl Loader {
 
     fn load_texture(
         &self,
-        assset_database: &mut AssetDatabase,
+        asset_database: &mut AssetDatabase,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
@@ -537,8 +551,7 @@ impl Loader {
             &texture_data,
         );
 
-        // TODO: Track textures based on material, if loaded textures as not standalone.
-        assset_database.track_texture(texture_reference, found_texture.assets_path_buf.clone());
+        asset_database.track_texture(texture_reference, found_texture.assets_path_buf.clone());
 
         texture_reference
     }
