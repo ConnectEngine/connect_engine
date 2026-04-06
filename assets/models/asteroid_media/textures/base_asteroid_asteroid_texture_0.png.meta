@@ -1,4 +1,4 @@
 [Texture]
 uuid = "e594fc2d-f65a-56d1-8e28-7a715befe797"
-name = "asteroid_texture_0"
+name = "base_asteroid_asteroid_texture_0.png"
 path_buf = "models/asteroid_media/textures/base_asteroid_asteroid_texture_0.png"

@@ -68,11 +68,6 @@ pub struct SerializedNode {
     pub mesh_index: Option<usize>,
 }
 
-pub struct SerializedModelResult {
-    pub serialized_model: SerializedModel,
-    pub associated_texture_entries: Vec<TextureEntry>,
-}
-
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedModel {
     pub meshes: Vec<SerializedMesh>,

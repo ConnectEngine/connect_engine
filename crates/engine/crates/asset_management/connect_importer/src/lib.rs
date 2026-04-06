@@ -366,13 +366,7 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
         .for_each(|asset_entry: AssetEntry| match asset_entry {
             AssetEntry::Model(model_entry) => {
                 let model_name = model_entry.entry.name.clone();
-                let serialized_model_result = serialize_model_asset(&mut importer, &model_entry);
-                serialized_model_result
-                    .associated_texture_entries
-                    .iter()
-                    .for_each(|texture_entry| {
-                        serialize_texture_asset(&mut importer, texture_entry);
-                    });
+                let serialized_model = serialize_model_asset(&mut importer, &model_entry);
 
                 let relative_path = model_entry
                     .entry
@@ -398,10 +392,8 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                 let serialized_model_path_buffer = serialized_asset_path
                     .join(std::format!("{}_{}", model_name, uuid))
                     .clone();
-                let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(
-                    &serialized_model_result.serialized_model,
-                )
-                .expect("Failed to serialize model.");
+                let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&serialized_model)
+                    .expect("Failed to serialize model.");
 
                 std::fs::write(serialized_model_path_buffer, bytes).unwrap();
 
@@ -423,15 +415,14 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                 )
                 .unwrap();
             }
-            AssetEntry::Texture(texture_entry) => {}
+            AssetEntry::Texture(texture_entry) => {
+                let texture_asset_metdata = serialize_texture_asset(&mut importer, &texture_entry);
+            }
         });
 }
 
 // TODO: Currently, we serialize and model, and textures, and materials in the same pass, later, need to separate them.
-fn serialize_model_asset(
-    importer: &mut Importer,
-    model_entry: &ModelEntry,
-) -> SerializedModelResult {
+fn serialize_model_asset(importer: &mut Importer, model_entry: &ModelEntry) -> SerializedModel {
     let model_path = model_entry.entry.path_buf.as_path();
     let model_name = model_entry.entry.name.split('.').next().unwrap();
 
@@ -709,10 +700,7 @@ fn serialize_model_asset(
         }
     }
 
-    SerializedModelResult {
-        serialized_model,
-        associated_texture_entries,
-    }
+    serialized_model
 }
 
 // TODO: Handle, when texture is not part of model's binary.
