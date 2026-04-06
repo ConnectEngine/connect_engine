@@ -590,9 +590,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.58"
+version = "1.2.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e928d4b69e3077709075a938a05ffbedfa53a84c8f766efbf8220bb1ff60e1"
+checksum = "b7a4d3ec6524d28a329fc53654bbadc9bdd7b0431f5d65f1a56ffb28a1ee5283"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -697,9 +697,9 @@ dependencies = [
  "connect_math",
  "connect_renderer",
  "connect_shared",
+ "fast_image_resize",
  "image",
  "intel_tex_2",
- "ispc-downsampler",
  "meshopt",
  "padding-struct",
  "rkyv",
@@ -750,9 +750,10 @@ dependencies = [
  "connect_math",
  "connect_renderer",
  "connect_shared",
+ "fast_image_resize",
+ "half",
  "image",
  "intel_tex_2",
- "ispc-downsampler",
  "meshopt",
  "padding-struct",
  "rkyv",
@@ -782,9 +783,9 @@ dependencies = [
  "connect_math",
  "connect_renderer",
  "connect_shared",
+ "fast_image_resize",
  "image",
  "intel_tex_2",
- "ispc-downsampler",
  "memmap2",
  "meshopt",
  "padding-struct",
@@ -818,9 +819,9 @@ dependencies = [
  "connect_information",
  "connect_math",
  "connect_shared",
+ "fast_image_resize",
  "image",
  "intel_tex_2",
- "ispc-downsampler",
  "meshopt",
  "padding-struct",
  "rkyv",
@@ -840,9 +841,9 @@ dependencies = [
  "bevy_ecs",
  "bytemuck",
  "connect_math",
+ "fast_image_resize",
  "image",
  "intel_tex_2",
- "ispc-downsampler",
  "meshopt",
  "padding-struct",
  "rkyv",
@@ -1082,6 +1083,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "document-features"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
+dependencies = [
+ "litrs",
+]
+
+[[package]]
 name = "dolly"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1217,10 +1227,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af9673d8203fcb076b19dfd17e38b3d4ae9f44959416ea532ce72415a6020365"
 
 [[package]]
-name = "fastrand"
-version = "2.3.0"
+name = "fast_image_resize"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+checksum = "12dd43e5011e8d8411a3215a0d57a2ec5c68282fb90eb5d7221fab0113442174"
+dependencies = [
+ "bytemuck",
+ "cfg-if",
+ "document-features",
+ "image",
+ "num-traits",
+ "rayon",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "fastrand"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a043dc74da1e37d6afe657061213aa6f425f855399a11d3463c6ecccc4dfda1f"
 
 [[package]]
 name = "fdeflate"
@@ -1528,6 +1553,7 @@ version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ea2d84b969582b4b1864a92dc5d27cd2b77b622a8d79306834f1be5ba20d84b"
 dependencies = [
+ "bytemuck",
  "cfg-if",
  "crunchy",
  "zerocopy",
@@ -1657,15 +1683,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "ispc-downsampler"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4876f1d990df2a500bf8ce65498e03ff5d5795f8558ffd40d18dfbf7785fe7a8"
-dependencies = [
- "ispc_rt",
 ]
 
 [[package]]
@@ -1893,6 +1910,12 @@ name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
+name = "litrs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "log"
@@ -2974,9 +2997,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 dependencies = [
  "serde",
  "serde_core",

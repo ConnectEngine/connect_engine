@@ -18,7 +18,7 @@ bevy_ecs = { workspace = true }
 asset-importer = { workspace = true }
 image = { workspace = true }
 texture_compressor = { workspace = true }
-texture_downsampler = { workspace = true }
+texture_resizer = { workspace = true }
 meshopt = { workspace = true }
 padding-struct = { workspace = true }
 vulkan = { workspace = true }

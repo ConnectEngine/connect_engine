@@ -1,14 +1,14 @@
 use connect_information::Information;
 use connect_renderer::*;
 use connect_shared::*;
-use image::{EncodableLayout, GenericImageView, ImageReader};
+use image::{GenericImageView, ImageReader};
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
     path::PathBuf,
 };
 use texture_compressor::*;
-use texture_downsampler::*;
+use texture_resizer::{FilterType, PixelType, ResizeAlg, images::Image as TextureResizerImage};
 use uuid::{Uuid, uuid};
 use walkdir::WalkDir;
 
@@ -416,7 +416,7 @@ pub fn serialize_unserialized_assets_system(mut importer: ResMut<Importer>) {
                 .unwrap();
             }
             AssetEntry::Texture(texture_entry) => {
-                let texture_asset_metdata = serialize_texture_asset(&mut importer, &texture_entry);
+                serialize_texture_asset(&mut importer, &texture_entry);
             }
         });
 }
@@ -498,12 +498,8 @@ fn serialize_model_asset(importer: &mut Importer, model_entry: &ModelEntry) -> S
 
     let mut serialized_meshes = HashMap::with_capacity(scene.num_meshes());
     // TODO: Temp.
+    // UPD: Ugh, I forgot why I wrote this. Damn.
     let mut extracted_textures = HashSet::with_capacity(scene.textures().count());
-    //let mut extracted_materials = HashSet::with_capacity(scene.textures().count());
-    let mut associated_texture_entries: Vec<TextureEntry> =
-        Vec::with_capacity(scene.textures().count());
-    //let mut serialized_textures = HashMap::with_capacity(serialized_meshes.capacity());
-    /*let mut uploaded_materials = HashMap::with_capacity(scene.num_materials()) */
 
     for node_data in nodes.into_iter() {
         if node_data.mesh_indices.len() > Default::default() {
@@ -624,8 +620,8 @@ fn serialize_model_asset(importer: &mut Importer, model_entry: &ModelEntry) -> S
 
                         let texture_asset_metadata =
                             serialize_texture_asset(importer, &texture_entry);
+
                         textures_assets_metadata.push(texture_asset_metadata);
-                        //associated_texture_entries.push(texture_entry);
                     }
 
                     // MATERIAL //////////////////////////////////////////
@@ -733,12 +729,8 @@ fn extract_texture_from_material(
             std::fs::create_dir_all(&target_path).unwrap();
 
             // TODO: Currently, we upload only base maps, so, we're hardcoding prefix of texture.
-            let texture_path = target_path.clone().join(std::format!(
-                "base_{}_{}.{}",
-                model_name,
-                texture_name,
-                format
-            ));
+            let new_texture_name = std::format!("base_{}_{}.{}", model_name, texture_name, format);
+            let texture_path = target_path.clone().join(&new_texture_name);
 
             let mut texture_file: std::fs::File =
                 std::fs::File::create(texture_path.as_path()).unwrap();
@@ -746,7 +738,7 @@ fn extract_texture_from_material(
             texture_file.write(&data).unwrap();
 
             base_asset_entry = Some(BaseAssetEntry {
-                name: texture_name,
+                name: new_texture_name,
                 extension: format,
                 path_buf: texture_path,
             });
@@ -847,14 +839,33 @@ fn serialize_texture_asset(
         .decode()
         .unwrap();
 
+    let is_hdr = texture_entry.format == TextureFormat::Bc6H;
     let (width, height) = image.dimensions();
-    let rgba_image = image.into_rgba8();
-    let image = Image::new(
-        &rgba_image,
-        width,
-        height,
-        texture_downsampler::AlbedoFormat::Srgba8,
-    );
+
+    let mut texture_resizer_image = if is_hdr {
+        let rgba32f = image.into_rgba32f();
+        let rgba32f_raw = rgba32f.into_raw();
+
+        let u8_vec_raw: Vec<u8> = bytemuck::cast_slice(&rgba32f_raw).to_vec();
+
+        TextureResizerImage::from_vec_u8(
+            width,
+            height,
+            u8_vec_raw,
+            texture_resizer::PixelType::F32x4,
+        )
+        .unwrap()
+    } else {
+        let rgba8 = image.into_rgba8();
+
+        TextureResizerImage::from_vec_u8(
+            width,
+            height,
+            rgba8.into_raw(),
+            texture_resizer::PixelType::U8x4,
+        )
+        .unwrap()
+    };
 
     // TODO: Assume that mip-map enabled by default.
     let mip_map_enabled = true;
@@ -866,19 +877,81 @@ fn serialize_texture_asset(
     };
 
     let mut texture_mip_maps = Vec::with_capacity(mip_levels_count as usize);
-    let texture_mip_map = compress_texture(rgba_image.as_bytes(), width, height);
 
-    texture_mip_maps.push(texture_mip_map);
+    let mut resizer = texture_resizer::Resizer::new();
+    unsafe {
+        resizer.set_cpu_extensions(texture_resizer::CpuExtensions::Avx2);
+    }
 
-    // TODO: Currently, we assume only BC1.
-    for mip_level_index in 1..mip_levels_count {
+    let options = texture_resizer::ResizeOptions::new()
+        .resize_alg(ResizeAlg::Convolution(FilterType::Lanczos3));
+
+    // TODO: Currently, we assume only BC1 for Albedo Textures.
+    for mip_level_index in 0..mip_levels_count {
         let current_width = (width >> mip_level_index).max(1);
         let current_height = (height >> mip_level_index).max(1);
 
-        let downsampled_image = downsample(&image, current_width, current_height);
-        let texture_mip_map = compress_texture(&downsampled_image, current_width, current_height);
+        let texture_mip_map = if is_hdr {
+            let u8_buffer = texture_resizer_image.buffer();
+            let f32_buffer: &[f32] = bytemuck::cast_slice(u8_buffer);
+
+            let f16_pixels: Vec<half::f16> = f32_buffer
+                .iter()
+                .map(|&value| half::f16::from_f32(value))
+                .collect();
+
+            let surface = RgbaSurface {
+                data: bytemuck::cast_slice(&f16_pixels),
+                width: current_width,
+                height: current_height,
+                stride: current_width * 8,
+            };
+
+            let encode_settings = bc6h::very_slow_settings();
+            TextureMipMap {
+                data: bc6h::compress_blocks(&encode_settings, &surface),
+                width: current_width,
+                height: current_height,
+            }
+        } else {
+            let surface = RgbaSurface {
+                data: texture_resizer_image.buffer(),
+                width: current_width,
+                height: current_height,
+                stride: current_width * 4,
+            };
+
+            TextureMipMap {
+                data: bc1::compress_blocks(&surface),
+                width: current_width,
+                height: current_height,
+            }
+        };
 
         texture_mip_maps.push(texture_mip_map);
+
+        let next_width = (current_width / 2).max(1);
+        let next_height = (current_height / 2).max(1);
+
+        if is_hdr {
+            let mut next_texture =
+                TextureResizerImage::new(next_width, next_height, PixelType::F32x4);
+
+            resizer
+                .resize(&texture_resizer_image, &mut next_texture, &options)
+                .unwrap();
+
+            texture_resizer_image = next_texture;
+        } else {
+            let mut next_texture =
+                TextureResizerImage::new(next_width, next_height, PixelType::U8x4);
+
+            resizer
+                .resize(&texture_resizer_image, &mut next_texture, &options)
+                .unwrap();
+
+            texture_resizer_image = next_texture;
+        }
     }
 
     let texture_metadata = TextureMetadata {
@@ -945,7 +1018,12 @@ fn serialize_texture_asset(
     texture_asset_metadata
 }
 
-fn compress_texture(data: &[u8], width: u32, height: u32) -> TextureMipMap {
+fn compress_texture(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    texture_format: TextureFormat,
+) -> TextureMipMap {
     let rgba_surface = RgbaSurface {
         data,
         width,
@@ -953,7 +1031,9 @@ fn compress_texture(data: &[u8], width: u32, height: u32) -> TextureMipMap {
         stride: width * 4,
     };
 
-    let compressed_image = bc1::compress_blocks(&rgba_surface);
+    let compressed_texture;
+    match texture_format {
+
     TextureMipMap {
         data: compressed_image,
         width,
