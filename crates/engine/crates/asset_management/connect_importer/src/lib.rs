@@ -1018,29 +1018,6 @@ fn serialize_texture_asset(
     texture_asset_metadata
 }
 
-fn compress_texture(
-    data: &[u8],
-    width: u32,
-    height: u32,
-    texture_format: TextureFormat,
-) -> TextureMipMap {
-    let rgba_surface = RgbaSurface {
-        data,
-        width,
-        height,
-        stride: width * 4,
-    };
-
-    let compressed_texture;
-    match texture_format {
-
-    TextureMipMap {
-        data: compressed_image,
-        width,
-        height,
-    }
-}
-
 fn is_material_transparent(material: &asset_importer::Material) -> bool {
     let alpha_mode = std::str::from_utf8(
         material
