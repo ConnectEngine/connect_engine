@@ -1,0 +1,5 @@
+[Material]
+uuid = "2db427a8-a1f4-5baa-b377-ba7e952d883b"
+name = "Scene_-_Root"
+path_buf = 'models\planet_media\materials\planet_Scene_-_Root.mat'
+textures = ["bd5ffc6a-e545-5719-b8a5-a7a8498b4e6b"]

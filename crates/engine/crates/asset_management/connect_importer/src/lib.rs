@@ -860,12 +860,12 @@ fn serialize_texture_asset(
         .unwrap();
 
     let (width, height) = image.dimensions();
-    let rgba_image = image.into_rgb8();
+    let rgba_image = image.into_rgba8();
     let image = Image::new(
         &rgba_image,
         width,
         height,
-        texture_downsampler::AlbedoFormat::Srgb8,
+        texture_downsampler::AlbedoFormat::Srgba8,
     );
 
     // TODO: Assume that mip-map enabled by default.
@@ -962,7 +962,7 @@ fn compress_texture(data: &[u8], width: u32, height: u32) -> TextureMipMap {
         data,
         width,
         height,
-        stride: width * 3,
+        stride: width * 4,
     };
 
     let compressed_image = bc1::compress_blocks(&rgba_surface);
