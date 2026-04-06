@@ -71,6 +71,8 @@ impl AssetDatabase {
         }
     }
 
+    // TODO: Don't give direct access to an `Entity` to the user API, due to ability to change or manipulate an Entity.
+    // Where in case of loaded assets are critical and can break everything.
     pub fn get_model_asset_entity(&self, name: &str) -> Entity {
         let found_model_asset = self
             .models
