@@ -999,8 +999,10 @@ fn generate_meshlets(
     indices: &[u32],
     vertices: &VertexDataAdapter,
 ) -> (Vec<connect_shared::Meshlet>, Vec<u32>, Vec<u8>) {
+    // TODO: This is balanced configuration for building meshlets, receommended for cross-vendor +/- same performance.
+    // Maybe, in when building a game, make an option to pack meshlets for different vendors, based on their recommended configurations.
     let max_vertices = 64;
-    let max_triangles = 64;
+    let max_triangles = 96;
     let cone_weight = 0.0;
 
     let raw_meshlets = build_meshlets(indices, vertices, max_vertices, max_triangles, cone_weight);

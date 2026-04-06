@@ -1,8 +1,10 @@
 import modules;
 
 static const let MAX_VERTICES : uint32_t = 64;
-static const let MAX_TRIANGLES : uint32_t = 64;
-static const let GROUP_SIZE : uint32_t = MAX_VERTICES;
+static const let MAX_TRIANGLES : uint32_t = 96;
+
+// TODO: Later define `GROUP_SIZE` by vendor (Nvidia, Intel or AMD) via constants.
+static const let GROUP_SIZE : uint32_t = 32;
 
 groupshared Payload payload;
 
@@ -40,28 +42,28 @@ func main(
 
     SetMeshOutputCounts(meshlet.vertex_count, meshlet.triangle_count);
 
-    if (group_index < meshlet.vertex_count)
+    for (uint i = group_index; i < meshlet.vertex_count; i += GROUP_SIZE)
     {
-        let vertexLookupIndex = meshlet.vertex_offset + group_index;
+        let vertexLookupIndex = meshlet.vertex_offset + i;
         let globalVertexId = ptr_mesh_object.vertex_indices[vertexLookupIndex];
 
         let v = ptr_mesh_object.vertices[globalVertexId];
-        outVerts[group_index] = process_vertex(v,
-                                               instance_object.model_matrix,
-                                               instance_object.normal_matrix,
-                                               push_constants.ptr_scene_data.camera_view_matrix);
+        
+        outVerts[i] = process_vertex(v,
+                                     instance_object.model_matrix,
+                                     instance_object.normal_matrix,
+                                     push_constants.ptr_scene_data.camera_view_matrix);
     }
 
-    if (group_index < meshlet.triangle_count)
+    for (uint i = group_index; i < meshlet.triangle_count; i += GROUP_SIZE)
     {
-        let triangleLookupIndex = meshlet.triangle_offset + (group_index * 3);
+        let triangleLookupIndex = meshlet.triangle_offset + (i * 3);
         let i0 = ptr_mesh_object.local_indices[triangleLookupIndex + 0];
         let i1 = ptr_mesh_object.local_indices[triangleLookupIndex + 1];
         let i2 = ptr_mesh_object.local_indices[triangleLookupIndex + 2];
 
-        outIndices[group_index] = uint32_t3(i0, i1, i2);
-
-        out_primitives[group_index] = PrimitiveData(instance_object.device_address_material);
+        outIndices[i] = uint32_t3(i0, i1, i2);
+        out_primitives[i] = PrimitiveData(instance_object.device_address_material);
     }
 }
 
