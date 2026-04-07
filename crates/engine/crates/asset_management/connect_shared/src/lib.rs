@@ -1,5 +1,5 @@
 use connect_math::*;
-use std::path::PathBuf;
+use std::{borrow::Cow, path::PathBuf};
 use vulkan::vk::Format;
 
 use bevy_ecs::{component::Component, name::Name};
@@ -19,8 +19,43 @@ pub struct SerializedMesh {
     pub material_uuid: Uuid,
 }
 
-#[repr(C)]
-#[padding_struct]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
+pub struct TextureExtent {
+    pub width: u32,
+    pub height: u32,
+    pub depth: u32,
+}
+
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
+pub enum TextureType {
+    #[default]
+    None,
+    Texture2D,
+    TextureCubemap,
+}
+
 #[derive(
     Debug,
     Default,
@@ -34,13 +69,13 @@ pub struct SerializedMesh {
     rkyv::Deserialize,
 )]
 pub struct TextureMetadata {
+    pub texture_type: TextureType,
     pub texture_format: TextureFormat,
-    pub width: u32,
-    pub height: u32,
+    pub texture_extent: TextureExtent,
     pub mip_levels_count: u32,
+    pub layers_count: u32,
 }
 
-#[repr(C)]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct TextureMipMap {
     pub data: Vec<u8>,
@@ -49,9 +84,14 @@ pub struct TextureMipMap {
 }
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+pub struct MipMappedTexture {
+    pub texture_mip_maps: Vec<TextureMipMap>,
+}
+
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
 pub struct SerializedTexture {
     pub texture_metadata: TextureMetadata,
-    pub texture_mip_maps: Vec<TextureMipMap>,
+    pub mip_mapped_texture: Vec<MipMappedTexture>,
 }
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
@@ -231,6 +271,7 @@ impl TryInto<Format> for TextureFormat {
 #[derive(Clone)]
 pub struct TextureEntry {
     pub entry: BaseAssetEntry,
+    pub texture_type: TextureType,
     pub format: TextureFormat,
     pub associated_model: Option<ModelEntry>,
 }

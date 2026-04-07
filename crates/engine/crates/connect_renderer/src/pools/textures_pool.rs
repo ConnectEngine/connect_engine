@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bevy_ecs::resource::Resource;
-use connect_shared::{TextureFormat, TextureKey, TextureMetadata};
+use connect_shared::{TextureExtent, TextureFormat, TextureKey, TextureMetadata, TextureType};
 use slotmap::{Key, SlotMap};
 use vulkan::{Device, vk::*};
 use vulkan_vma::*;
@@ -50,10 +50,12 @@ impl TexturesPoolResource {
 
     pub fn create_texture(
         &mut self,
+        texture_type: TextureType,
         format: Format,
         extent: Extent3D,
         usage_flags: ImageUsageFlags,
         mip_map_enabled: bool,
+        layers_count: u32,
     ) -> TextureReference {
         let read_only = usage_flags.contains(ImageUsageFlags::SAMPLED);
 
@@ -71,20 +73,22 @@ impl TexturesPoolResource {
             1
         };
 
-        // TODO: STORE INFO
-        /* let texture_metadata = TextureMetadata {
-            width: extent.width,
-            height: extent.height,
-            mip_levels_count,
+        let texture_metadata = TextureMetadata {
+            texture_type,
             texture_format: TextureFormat::try_from(format).unwrap(),
-            ..Default::default()
-        }; */
+            texture_extent: TextureExtent {
+                width: extent.width,
+                height: extent.height,
+                depth: extent.depth,
+            },
+            mip_levels_count,
+            layers_count,
+        };
 
         let texture_reference = self.upload_texture(
-            format,
+            texture_metadata,
             extent,
             usage_flags,
-            mip_levels_count,
             aspect_flags,
             read_only,
         );
@@ -95,10 +99,9 @@ impl TexturesPoolResource {
     #[must_use]
     pub fn upload_texture(
         &mut self,
-        format: Format,
+        texture_metadata: TextureMetadata,
         extent: Extent3D,
         usage_flags: ImageUsageFlags,
-        mip_levels_count: u32,
         aspect_flags: ImageAspectFlags,
         read_only: bool,
     ) -> TextureReference {
@@ -108,12 +111,13 @@ impl TexturesPoolResource {
             ..Default::default()
         };
 
+        let format: Format = texture_metadata.texture_format.try_into().unwrap();
         let image_create_info = Self::get_image_info(
             format,
             usage_flags,
             extent,
             ImageLayout::UNDEFINED,
-            mip_levels_count,
+            texture_metadata.mip_levels_count,
         );
         let (allocated_image, allocation) = unsafe {
             self.allocator
@@ -121,15 +125,17 @@ impl TexturesPoolResource {
                 .unwrap()
         };
 
-        let image_view_create_info =
-            Self::get_image_view_info(format, allocated_image, aspect_flags, mip_levels_count);
+        let image_view_create_info = Self::get_image_view_info(
+            format,
+            allocated_image,
+            aspect_flags,
+            texture_metadata.mip_levels_count,
+        );
         let image_view = unsafe {
             self.device
                 .create_image_view(&image_view_create_info, None)
                 .unwrap()
         };
-
-        let texture_format = TextureFormat::try_from(format).unwrap();
 
         let allocated_image = AllocatedImage {
             image: allocated_image,
@@ -139,13 +145,7 @@ impl TexturesPoolResource {
             format,
             image_aspect_flags: aspect_flags,
             subresource_range: image_view_create_info.subresource_range,
-            texture_metadata: TextureMetadata {
-                width: extent.width,
-                height: extent.height,
-                mip_levels_count,
-                texture_format,
-                ..Default::default()
-            },
+            texture_metadata,
         };
 
         self.insert_image(allocated_image, read_only)

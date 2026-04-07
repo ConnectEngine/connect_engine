@@ -531,23 +531,30 @@ impl Loader {
         let archived_texture_metadata = &archived_serialized_texture.texture_metadata;
 
         let mut texture_data = Vec::new();
-        for mip_level_index in 0..archived_texture_metadata.mip_levels_count.to_native() {
-            texture_data.extend_from_slice(
-                &archived_serialized_texture.texture_mip_maps[mip_level_index as usize].data,
-            );
-        }
+        archived_serialized_texture
+            .mip_mapped_texture
+            .iter()
+            .for_each(|mip_mapped_texture| {
+                mip_mapped_texture
+                    .texture_mip_maps
+                    .iter()
+                    .for_each(|texture_mip_map| {
+                        texture_data.extend_from_slice(&texture_mip_map.data);
+                    });
+            });
 
         let texture_metadata =
             rkyv::deserialize::<TextureMetadata, rkyv::rancor::Error>(archived_texture_metadata)
                 .unwrap();
 
         let texture_reference = self.upload_texture(
+            &found_texture.assets_path_buf,
             vulkan_context_resource,
             renderer_context_resource,
             descriptor_set_handle,
             textures_pool,
             buffers_pool,
-            &texture_metadata,
+            texture_metadata,
             &texture_data,
         );
 
@@ -558,24 +565,23 @@ impl Loader {
 
     pub fn upload_texture(
         &self,
+        texture_path: &Path,
         vulkan_context_resource: &VulkanContextResource,
         renderer_context_resource: &RendererContextResource,
         descriptor_set_handle: &mut DescriptorSetHandle,
         textures_pool: &mut TexturesPoolResource,
         buffers_pool: &mut BuffersPoolResource,
-        texture_metadata: &TextureMetadata,
+        texture_metadata: TextureMetadata,
         data: &[u8],
     ) -> TextureReference {
-        let texture_format: Format = texture_metadata.texture_format.try_into().unwrap();
         let texture_reference = textures_pool.upload_texture(
-            texture_format,
+            texture_metadata,
             vulkan::vk::Extent3D {
-                width: texture_metadata.width,
-                height: texture_metadata.height,
-                depth: 1,
+                width: texture_metadata.texture_extent.width,
+                height: texture_metadata.texture_extent.height,
+                depth: texture_metadata.texture_extent.depth,
             },
             ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
-            texture_metadata.mip_levels_count,
             ImageAspectFlags::COLOR,
             true,
         );
@@ -600,10 +606,10 @@ impl Loader {
         let texture_metadata = texture_reference.texture_metadata;
         println!(
             "Name: {} | Index: {} | Extent: {}x{}x{}",
-            "FIXME: TEXTURE METADATA DOESN'T HAVE FIELD 'Name'",
+            texture_path.display(),
             texture_reference.get_index(),
-            texture_metadata.width,
-            texture_metadata.height,
+            texture_metadata.texture_extent.width,
+            texture_metadata.texture_extent.height,
             1,
         );
 

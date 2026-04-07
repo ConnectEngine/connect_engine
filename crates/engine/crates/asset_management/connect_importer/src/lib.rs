@@ -1,14 +1,16 @@
 use connect_information::Information;
 use connect_renderer::*;
 use connect_shared::*;
-use image::{GenericImageView, ImageReader};
+use image::{DynamicImage, GenericImageView, ImageReader};
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Read, Write},
     path::PathBuf,
 };
 use texture_compressor::*;
-use texture_resizer::{FilterType, PixelType, ResizeAlg, images::Image as TextureResizerImage};
+use texture_resizer::{
+    FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer, images::Image as TextureResizerImage,
+};
 use uuid::{Uuid, uuid};
 use walkdir::WalkDir;
 
@@ -285,9 +287,9 @@ pub fn resolve_assets_entries_system(mut importer: ResMut<Importer>) {
                 // TODO: Add other formats.
                 // TODO: Add hdr image format support for cubemaps.
                 "hdr" | "jpg" | "jpeg" | "png" => {
-                    let texture_format = match extension {
-                        "jpg" | "jpeg" | "png" => TextureFormat::Bc1,
-                        "hdr" => TextureFormat::Bc6H,
+                    let (texture_type, texture_format) = match extension {
+                        "jpg" | "jpeg" | "png" => (TextureType::Texture2D, TextureFormat::Bc1),
+                        "hdr" => (TextureType::TextureCubemap, TextureFormat::Bc6H),
                         _ => unimplemented!(),
                     };
 
@@ -302,6 +304,7 @@ pub fn resolve_assets_entries_system(mut importer: ResMut<Importer>) {
                                 .to_owned(),
                             path_buf: asset_to_serialize.clone(),
                         },
+                        texture_type,
                         format: texture_format,
                         associated_model: None,
                     }))
@@ -613,6 +616,8 @@ fn serialize_model_asset(importer: &mut Importer, model_entry: &ModelEntry) -> S
                     let mut textures_assets_metadata = Vec::new();
                     if let Some(asset_entry) = texture_base_asset_entry {
                         let texture_entry = TextureEntry {
+                            // NOTE: We assume by default that used texture type 2D as a type for a material's texture.
+                            texture_type: TextureType::Texture2D,
                             entry: asset_entry.clone(),
                             format: texture_format,
                             associated_model: Some(model_entry.clone()),
@@ -839,45 +844,6 @@ fn serialize_texture_asset(
         .decode()
         .unwrap();
 
-    let is_hdr = texture_entry.format == TextureFormat::Bc6H;
-    let (width, height) = image.dimensions();
-
-    let mut texture_resizer_image = if is_hdr {
-        let rgba32f = image.into_rgba32f();
-        let rgba32f_raw = rgba32f.into_raw();
-
-        let u8_vec_raw: Vec<u8> = bytemuck::cast_slice(&rgba32f_raw).to_vec();
-
-        TextureResizerImage::from_vec_u8(
-            width,
-            height,
-            u8_vec_raw,
-            texture_resizer::PixelType::F32x4,
-        )
-        .unwrap()
-    } else {
-        let rgba8 = image.into_rgba8();
-
-        TextureResizerImage::from_vec_u8(
-            width,
-            height,
-            rgba8.into_raw(),
-            texture_resizer::PixelType::U8x4,
-        )
-        .unwrap()
-    };
-
-    // TODO: Assume that mip-map enabled by default.
-    let mip_map_enabled = true;
-
-    let mip_levels_count = if mip_map_enabled {
-        f32::max(width as _, height as _).log2().floor() as u32 + 1
-    } else {
-        1
-    };
-
-    let mut texture_mip_maps = Vec::with_capacity(mip_levels_count as usize);
-
     let mut resizer = texture_resizer::Resizer::new();
     unsafe {
         resizer.set_cpu_extensions(texture_resizer::CpuExtensions::Avx2);
@@ -886,86 +852,21 @@ fn serialize_texture_asset(
     let options = texture_resizer::ResizeOptions::new()
         .resize_alg(ResizeAlg::Convolution(FilterType::Lanczos3));
 
-    // TODO: Currently, we assume only BC1 for Albedo Textures.
-    for mip_level_index in 0..mip_levels_count {
-        let current_width = (width >> mip_level_index).max(1);
-        let current_height = (height >> mip_level_index).max(1);
-
-        let texture_mip_map = if is_hdr {
-            let u8_buffer = texture_resizer_image.buffer();
-            let f32_buffer: &[f32] = bytemuck::cast_slice(u8_buffer);
-
-            let f16_pixels: Vec<half::f16> = f32_buffer
-                .iter()
-                .map(|&value| half::f16::from_f32(value))
-                .collect();
-
-            let surface = RgbaSurface {
-                data: bytemuck::cast_slice(&f16_pixels),
-                width: current_width,
-                height: current_height,
-                stride: current_width * 8,
-            };
-
-            let encode_settings = bc6h::very_slow_settings();
-            TextureMipMap {
-                data: bc6h::compress_blocks(&encode_settings, &surface),
-                width: current_width,
-                height: current_height,
-            }
-        } else {
-            let surface = RgbaSurface {
-                data: texture_resizer_image.buffer(),
-                width: current_width,
-                height: current_height,
-                stride: current_width * 4,
-            };
-
-            TextureMipMap {
-                data: bc1::compress_blocks(&surface),
-                width: current_width,
-                height: current_height,
-            }
-        };
-
-        texture_mip_maps.push(texture_mip_map);
-
-        let next_width = (current_width / 2).max(1);
-        let next_height = (current_height / 2).max(1);
-
-        if is_hdr {
-            let mut next_texture =
-                TextureResizerImage::new(next_width, next_height, PixelType::F32x4);
-
-            resizer
-                .resize(&texture_resizer_image, &mut next_texture, &options)
-                .unwrap();
-
-            texture_resizer_image = next_texture;
-        } else {
-            let mut next_texture =
-                TextureResizerImage::new(next_width, next_height, PixelType::U8x4);
-
-            resizer
-                .resize(&texture_resizer_image, &mut next_texture, &options)
-                .unwrap();
-
-            texture_resizer_image = next_texture;
-        }
-    }
-
-    let texture_metadata = TextureMetadata {
-        texture_format: texture_entry.format,
-        width,
-        height,
-        mip_levels_count,
-        ..Default::default()
-    };
+    let (texture_metadata, mip_mapped_texture) = compress_texture(
+        image,
+        &mut resizer,
+        &options,
+        texture_entry.texture_type,
+        texture_entry.format,
+        // TODO: Right now, enable by default mip maps.
+        true,
+    );
 
     let serialized_texture = SerializedTexture {
         texture_metadata,
-        texture_mip_maps,
+        mip_mapped_texture,
     };
+
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&serialized_texture)
         .expect("Failed to serialize model.");
 
@@ -1000,8 +901,6 @@ fn serialize_texture_asset(
         uuid,
         name: texture_entry.entry.name.clone(),
         path_buf: PathBuf::from(normalized_asset_path),
-        // TODO: Temp commenting.
-        // textures,
     };
 
     let asset_metadata = AssetMetadata::Texture(texture_asset_metadata.clone());
@@ -1016,6 +915,167 @@ fn serialize_texture_asset(
     .unwrap();
 
     texture_asset_metadata
+}
+
+fn compress_texture(
+    image: DynamicImage,
+    resizer: &mut Resizer,
+    resize_options: &ResizeOptions,
+    texture_type: TextureType,
+    format: TextureFormat,
+    mip_maps_enabled: bool,
+) -> (TextureMetadata, Vec<MipMappedTexture>) {
+    let is_hdr = format == TextureFormat::Bc6H;
+    let (width, height) = image.dimensions();
+
+    let mut texture_resizer_image = if is_hdr {
+        let rgba32f = image.into_rgba32f();
+        let rgba32f_raw = rgba32f.into_raw();
+
+        let u8_vec_raw: Vec<u8> = bytemuck::cast_slice(&rgba32f_raw).to_vec();
+
+        TextureResizerImage::from_vec_u8(
+            width,
+            height,
+            u8_vec_raw,
+            texture_resizer::PixelType::F32x4,
+        )
+        .unwrap()
+    } else {
+        let rgba8 = image.into_rgba8();
+
+        TextureResizerImage::from_vec_u8(
+            width,
+            height,
+            rgba8.into_raw(),
+            texture_resizer::PixelType::U8x4,
+        )
+        .unwrap()
+    };
+
+    let mip_levels_count = if mip_maps_enabled {
+        f32::max(width as _, height as _).log2().floor() as u32 + 1
+    } else {
+        1
+    };
+
+    let layers_count: u32 = match format {
+        TextureFormat::Bc6H => 6,
+        _ => 1,
+    };
+
+    let mut mip_mapped_textures = Vec::with_capacity(layers_count as usize);
+
+    match format {
+        TextureFormat::Bc6H => {}
+        _ => {
+            let mut texture_mip_maps: Vec<TextureMipMap> =
+                Vec::with_capacity(mip_levels_count as usize);
+
+            // TODO: Currently, we assume only BC1 for any type of texture, exception is `.hdr` images,
+            // which assumed as the cubemaps and precessed accordingly.
+            for mip_level_index in 0..mip_levels_count {
+                let current_width = (width >> mip_level_index).max(1);
+                let current_height = (height >> mip_level_index).max(1);
+
+                let texture_mip_map = resize_and_compress_texture(
+                    texture_resizer_image.buffer(),
+                    current_width,
+                    current_height,
+                    format,
+                );
+
+                texture_mip_maps.push(texture_mip_map);
+
+                let next_width = (current_width / 2).max(1);
+                let next_height = (current_height / 2).max(1);
+
+                if is_hdr {
+                    let mut next_texture =
+                        TextureResizerImage::new(next_width, next_height, PixelType::F32x4);
+
+                    resizer
+                        .resize(&texture_resizer_image, &mut next_texture, resize_options)
+                        .unwrap();
+
+                    texture_resizer_image = next_texture;
+                } else {
+                    let mut next_texture =
+                        TextureResizerImage::new(next_width, next_height, PixelType::U8x4);
+
+                    resizer
+                        .resize(&texture_resizer_image, &mut next_texture, resize_options)
+                        .unwrap();
+
+                    texture_resizer_image = next_texture;
+                }
+            }
+
+            let mip_mapped_texture = MipMappedTexture { texture_mip_maps };
+
+            mip_mapped_textures.push(mip_mapped_texture);
+        }
+    }
+
+    let texture_metadata = TextureMetadata {
+        texture_type: texture_type,
+        texture_format: format,
+        texture_extent: TextureExtent {
+            width,
+            height,
+            depth: 1,
+        },
+        mip_levels_count,
+        layers_count,
+    };
+
+    (texture_metadata, mip_mapped_textures)
+}
+
+// TODO: Not optimal allocations, probably take into account arena allocators for simplyfied usage.
+fn resize_and_compress_texture(
+    data: &[u8],
+    target_width: u32,
+    target_height: u32,
+    target_texture_format: TextureFormat,
+) -> TextureMipMap {
+    let data_to_compress = match target_texture_format {
+        TextureFormat::Bc1 => data.to_vec(),
+        TextureFormat::Bc6H => {
+            let f32_buffer: &[f32] = bytemuck::cast_slice(data);
+
+            let f16_pixels: Vec<half::f16> = f32_buffer
+                .iter()
+                .map(|&value| half::f16::from_f32(value))
+                .collect();
+
+            bytemuck::cast_slice(&f16_pixels).to_vec()
+        }
+        _ => panic!("Unsupported format: {:?}", target_texture_format),
+    };
+
+    let surface = RgbaSurface {
+        data: &data_to_compress,
+        width: target_width,
+        height: target_height,
+        stride: target_width * 4,
+    };
+
+    let compressed_data = match target_texture_format {
+        TextureFormat::Bc1 => bc1::compress_blocks(&surface),
+        TextureFormat::Bc6H => {
+            let encode_settings = bc6h::very_slow_settings();
+
+            bc6h::compress_blocks(&encode_settings, &surface)
+        }
+        _ => panic!("Unsupported format: {:?}", target_texture_format),
+    };
+
+    TextureMipMap {
+        data: compressed_data,
+        width: target_width,
+        height: target_height,
+    }
 }
 
 fn is_material_transparent(material: &asset_importer::Material) -> bool {

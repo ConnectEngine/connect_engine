@@ -31,7 +31,7 @@ impl VulkanContextResource {
         upload_context: &UploadContext,
         size: Option<usize>,
     ) {
-        let texture_metadata = allocated_image.texture_metadata;
+        let texture_metadata = &allocated_image.texture_metadata;
         let command_buffer = upload_context.command_group.command_buffer;
 
         let command_buffer_begin_info = CommandBufferBeginInfo {
@@ -54,7 +54,9 @@ impl VulkanContextResource {
         let size = match size {
             Some(size) => size,
             None => {
-                (texture_metadata.width * texture_metadata.height * block_size_in_bytes) as usize
+                (texture_metadata.texture_extent.width
+                    * texture_metadata.texture_extent.height
+                    * block_size_in_bytes) as usize
             }
         };
 
@@ -83,9 +85,9 @@ impl VulkanContextResource {
 
         let mut current_buffer_offset = 0;
 
-        let mut mip_width = texture_metadata.width;
-        let mut mip_height = texture_metadata.height;
-        let mut mip_depth = 1;
+        let mut mip_width = texture_metadata.texture_extent.width;
+        let mut mip_height = texture_metadata.texture_extent.height;
+        let mut mip_depth = texture_metadata.texture_extent.depth;
 
         let mut buffer_image_copies = Vec::with_capacity(texture_metadata.mip_levels_count as _);
         for mip_map_level_index in 0..texture_metadata.mip_levels_count {

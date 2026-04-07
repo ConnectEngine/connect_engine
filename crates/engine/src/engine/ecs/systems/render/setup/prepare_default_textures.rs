@@ -31,10 +31,12 @@ pub fn prepare_default_textures_system(
         depth: 1,
     };
     let checkerboard_texture_reference = textures_pool.create_texture(
+        connect_shared::TextureType::Texture2D,
         Format::R8G8B8A8_UNORM,
         checkerboard_image_extent,
         ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
         false,
+        1,
     );
 
     renderer_resources.default_texture_reference = checkerboard_texture_reference;
@@ -63,10 +65,12 @@ pub fn prepare_default_textures_system(
         depth: 1,
     };
     let white_texture_reference = textures_pool.create_texture(
+        connect_shared::TextureType::Texture2D,
         Format::R8G8B8A8_SRGB,
         white_image_extent,
         ImageUsageFlags::SAMPLED | ImageUsageFlags::TRANSFER_DST,
         false,
+        1,
     );
     renderer_resources.fallback_texture_reference = white_texture_reference;
 
@@ -100,19 +104,23 @@ pub fn prepare_default_textures_system(
             };
 
             let draw_texture_reference = textures_pool.create_texture(
+                connect_shared::TextureType::Texture2D,
                 Format::R16G16B16A16_SFLOAT,
                 draw_image_extent,
                 ImageUsageFlags::TRANSFER_SRC
                     | ImageUsageFlags::STORAGE
                     | ImageUsageFlags::COLOR_ATTACHMENT,
                 false,
+                1,
             );
 
             let depth_texture_reference = textures_pool.create_texture(
+                connect_shared::TextureType::Texture2D,
                 Format::D32_SFLOAT,
                 draw_image_extent,
                 ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                 false,
+                1,
             );
 
             let descriptor_draw_image = DescriptorKind::StorageImage(DescriptorStorageImage {
